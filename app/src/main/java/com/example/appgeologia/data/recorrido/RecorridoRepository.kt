@@ -90,36 +90,40 @@ class RecorridoRepository(
 
     /**
      * Guarda los datos de la parada (ubicación, sitio, observaciones).
-     * Los horizontes NO se toman de [parada]: se editan con sus propias funciones para
+     * Los items NO se toman de [parada]: se editan con sus propias funciones para
      * que dos pantallas abiertas a la vez no se pisen los cambios.
      */
     fun guardarParada(recorridoId: Long, parada: Parada) =
         modificarParada(recorridoId, parada.id) { actual ->
-            parada.copy(horizontes = actual.horizontes)
+            parada.copy(items = actual.items)
         }
 
     fun eliminarParada(recorridoId: Long, paradaId: Long) =
         modificarRecorrido(recorridoId) { r -> r.copy(paradas = r.paradas.filterNot { it.id == paradaId }) }
 
-    // ----- Horizontes -----
+    // ----- Items -----
 
-    fun agregarHorizonte(recorridoId: Long, paradaId: Long): Long {
+    fun agregarItem(recorridoId: Long, paradaId: Long): Long {
         val id = nuevoId()
         modificarParada(recorridoId, paradaId) { p ->
-            p.copy(horizontes = p.horizontes + Horizonte(id = id))
+            p.copy(items = p.items + ItemParada(id = id, fecha = reloj()))
         }
         return id
     }
 
-    fun guardarHorizonte(recorridoId: Long, paradaId: Long, horizonte: Horizonte) =
+    fun guardarItem(recorridoId: Long, paradaId: Long, item: ItemParada) =
         modificarParada(recorridoId, paradaId) { p ->
-            p.copy(horizontes = p.horizontes.map { if (it.id == horizonte.id) horizonte else it })
+            p.copy(items = p.items.map { if (it.id == item.id) item else it })
         }
 
-    fun eliminarHorizonte(recorridoId: Long, paradaId: Long, horizonteId: Long) =
+    fun eliminarItem(recorridoId: Long, paradaId: Long, itemId: Long) =
         modificarParada(recorridoId, paradaId) { p ->
-            p.copy(horizontes = p.horizontes.filterNot { it.id == horizonteId })
+            p.copy(items = p.items.filterNot { it.id == itemId })
         }
+
+    /** Todas las fotos usadas por algún item (para borrar las que quedaron sueltas). */
+    fun fotosEnUso(): Set<String> =
+        _recorridos.value.flatMap { r -> r.paradas.flatMap { p -> p.items.flatMap { it.fotos } } }.toSet()
 
     // ----- Internos -----
 

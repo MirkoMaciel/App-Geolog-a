@@ -246,7 +246,7 @@ fun DetalleRecorridoScreen(
         AlertDialog(
             onDismissRequest = { confirmarEliminar = false },
             title = { Text("Eliminar recorrido") },
-            text = { Text("Se borrarán \"${recorrido.nombre}\" y sus ${recorrido.paradas.size} paradas. Esta acción no se puede deshacer.") },
+            text = { Text("Se borrarán \"${recorrido.nombre}\" con sus ${recorrido.paradas.size} paradas, items y fotos. Esta acción no se puede deshacer.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmarEliminar = false
@@ -284,7 +284,7 @@ private fun TarjetaParada(parada: Parada, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "${formatearFechaHora(parada.fecha)} · ${parada.horizontes.size} horizonte(s)",
+                "${formatearFechaHora(parada.fecha)} · ${parada.items.size} item(s)",
                 style = MaterialTheme.typography.bodySmall
             )
         }

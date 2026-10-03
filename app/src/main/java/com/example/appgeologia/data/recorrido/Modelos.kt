@@ -1,6 +1,8 @@
 package com.example.appgeologia.data.recorrido
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonNames
 
 /**
  * Materia sobre la que se toman las anotaciones en la salida de campo.
@@ -24,7 +26,11 @@ data class Recorrido(
     val paradas: List<Parada> = emptyList()
 )
 
-/** Punto del recorrido donde se completa la planilla de suelos. */
+/**
+ * Punto del recorrido: guarda la hora, la posición y los datos generales del sitio.
+ * Lo observado en el lugar se registra como [items].
+ */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class Parada(
     val id: Long,
@@ -36,7 +42,8 @@ data class Parada(
     /** Precisión del GPS en metros al momento de tomar la posición (null si se cargó a mano). */
     val precisionMetros: Float? = null,
     val sitio: DatosSitio = DatosSitio(),
-    val horizontes: List<Horizonte> = emptyList(),
+    // "horizontes" es el nombre que tenía en la primera versión de la app.
+    @JsonNames("horizontes") val items: List<ItemParada> = emptyList(),
     val observaciones: String = ""
 )
 
@@ -65,13 +72,23 @@ data class DatosSitio(
 )
 
 /**
- * Una columna de la tabla de la planilla: la descripción de un horizonte del perfil.
+ * Una observación hecha en la parada: título, descripción, fotos y, si corresponde,
+ * los datos de la planilla de suelos. Cada item con datos de suelo es una columna de
+ * la tabla del PDF.
+ *
  * Los campos con opciones fijas guardan el código tal cual aparece en la planilla
  * (por ejemplo "MA" o "NoEf"); ver [OpcionesSuelo].
  */
 @Serializable
-data class Horizonte(
+data class ItemParada(
     val id: Long,
+    val titulo: String = "",
+    val descripcion: String = "",
+    /** Nombres de archivo dentro de la carpeta de fotos de la app (ver AlmacenFotos). */
+    val fotos: List<String> = emptyList(),
+    val fecha: Long = 0,
+    // ----- Datos de la planilla de suelos -----
+    /** Nombre del horizonte (A, Bt1, C...). */
     val nombre: String = "",
     val profundidad: String = "",
     // Límite
@@ -110,3 +127,7 @@ data class Horizonte(
     val fragmentosRedondez: String = "",
     val fragmentosTamano: String = ""
 )
+
+/** true si el item tiene cargado algún dato de la planilla de suelos. */
+fun ItemParada.tieneDatosSuelo(): Boolean =
+    copy(id = 0, titulo = "", descripcion = "", fotos = emptyList(), fecha = 0) != ItemParada(id = 0)

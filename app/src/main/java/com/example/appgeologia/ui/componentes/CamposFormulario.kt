@@ -123,5 +123,8 @@ fun formatearFecha(millis: Long): String =
 fun formatearFechaHora(millis: Long): String =
     SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(millis))
 
+fun formatearHora(millis: Long): String =
+    SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(millis))
+
 fun formatearCoordenada(valor: Double?): String =
     valor?.let { String.format(Locale.US, "%.6f", it) } ?: "—"

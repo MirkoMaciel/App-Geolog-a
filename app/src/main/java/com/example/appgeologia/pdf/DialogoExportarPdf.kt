@@ -1,8 +1,6 @@
 package com.example.appgeologia.pdf
 
-import android.content.ActivityNotFoundException
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,14 +27,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
+import com.example.appgeologia.archivos.compartirPdf
+import com.example.appgeologia.archivos.verPdf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * Genera el PDF con [generar] y ofrece verlo, compartirlo (mail, WhatsApp, Drive...)
- * o guardarlo en una carpeta del teléfono.
+ * Genera el PDF con [generar] (queda guardado en "Mis exportaciones") y ofrece verlo,
+ * compartirlo (mail, WhatsApp, Drive...) o guardar una copia en una carpeta del teléfono.
  */
 @Composable
 fun DialogoExportarPdf(
@@ -84,6 +84,10 @@ fun DialogoExportarPdf(
                 }
                 else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(listo.name)
+                    Text(
+                        "También quedó guardado en \"Mis exportaciones\".",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                     Button(onClick = { verPdf(context, listo) }, modifier = Modifier.fillMaxWidth()) {
                         Text("Ver")
                     }
@@ -94,33 +98,11 @@ fun DialogoExportarPdf(
                         onClick = { lanzadorGuardar.launch(listo.name) },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Guardar en el teléfono")
+                        Text("Guardar copia en el teléfono")
                     }
                 }
             }
         },
         confirmButton = { TextButton(onClick = onCerrar) { Text("Cerrar") } }
     )
-}
-
-private fun uriDe(context: Context, archivo: File): Uri =
-    FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", archivo)
-
-private fun verPdf(context: Context, archivo: File) {
-    val intent = Intent(Intent.ACTION_VIEW)
-        .setDataAndType(uriDe(context, archivo), "application/pdf")
-        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    try {
-        context.startActivity(intent)
-    } catch (e: ActivityNotFoundException) {
-        Toast.makeText(context, "No hay una app para ver PDF instalada", Toast.LENGTH_LONG).show()
-    }
-}
-
-private fun compartirPdf(context: Context, archivo: File) {
-    val intent = Intent(Intent.ACTION_SEND)
-        .setType("application/pdf")
-        .putExtra(Intent.EXTRA_STREAM, uriDe(context, archivo))
-        .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    context.startActivity(Intent.createChooser(intent, "Compartir PDF"))
 }

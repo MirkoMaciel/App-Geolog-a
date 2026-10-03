@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
+    <!-- PDFs de "Mis exportaciones" (para verlos y compartirlos) -->
+    <files-path
+        name="exportaciones"
+        path="exportaciones/" />
+    <!-- Archivo temporal donde la cámara guarda la foto -->
     <cache-path
-        name="pdfs"
-        path="pdfs/" />
+        name="camara"
+        path="camara/" />
 </paths>

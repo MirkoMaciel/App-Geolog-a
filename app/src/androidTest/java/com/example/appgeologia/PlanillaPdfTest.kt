@@ -1,17 +1,23 @@
 package com.example.appgeologia
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.appgeologia.data.recorrido.DatosSitio
-import com.example.appgeologia.data.recorrido.Horizonte
+import com.example.appgeologia.archivos.AlmacenFotos
+import com.example.appgeologia.data.recorrido.ItemParada
 import com.example.appgeologia.data.recorrido.Parada
 import com.example.appgeologia.data.recorrido.Recorrido
 import com.example.appgeologia.pdf.PlanillaPdf
 import org.junit.Assert.assertEquals
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
@@ -26,7 +32,8 @@ class PlanillaPdfTest {
 
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
-    private fun horizonte(id: Long, nombre: String, prof: String) = Horizonte(
+    private fun horizonte(id: Long, nombre: String, prof: String) = ItemParada(
+        titulo = "Horizonte $nombre", descripcion = "Descripción del horizonte $nombre.", fecha = 1_790_000_000_000,
         id = id, nombre = nombre, profundidad = prof,
         limiteDefinicion = "C", limiteTopografia = "Ond",
         colorSeco = "10YR 5/3", colorHumedo = "10YR 3/2", textura = "Franco arenoso",
@@ -52,9 +59,16 @@ class PlanillaPdfTest {
             salesAlcalis = "No", usoTierra = "Ganadería ovina", pedregosidad = "Moderada",
             clasificacion = "Haplocalcid típico", temperatura = "14 °C"
         ),
-        horizontes = listOf(
+        items = listOf(
+            ItemParada(
+                id = 10, titulo = "Afloramiento de basalto", fecha = 1_790_000_100_000,
+                descripcion = "Afloramiento en el corte de la ruta, a unos 30 m al norte de la calicata. " +
+                    "Basalto vesicular con disyunción columnar; se tomaron fotos de detalle y de contexto.",
+                fotos = listOf("prueba_1.jpg", "prueba_2.jpg", "prueba_3.jpg")
+            ),
             horizonte(1, "A", "0-12"), horizonte(2, "Bt", "12-35"),
-            horizonte(3, "Bk", "35-70"), horizonte(4, "C", "70-110"), horizonte(5, "2C", "110+")
+            horizonte(3, "Bk", "35-70"), horizonte(4, "C", "70-110"), horizonte(5, "2C", "110+"),
+            ItemParada(id = 11, titulo = "Vista general del sitio", fecha = 1_790_000_200_000, fotos = listOf("prueba_2.jpg"))
         ),
         observaciones = "Perfil descripto en la pared norte de la calicata. Presencia de carbonatos desde los 35 cm."
     )
@@ -64,16 +78,34 @@ class PlanillaPdfTest {
         fechaInicio = 1_790_000_000_000, paradas = listOf(parada)
     )
 
+    /** Fotos de prueba (una apaisada y una vertical) en la carpeta de fotos de la app. */
+    @Before
+    fun crearFotos() {
+        val almacen = AlmacenFotos(context)
+        listOf("prueba_1.jpg" to (1600 to 1200), "prueba_2.jpg" to (900 to 1600), "prueba_3.jpg" to (1600 to 1000))
+            .forEach { (nombre, tam) ->
+                val bitmap = Bitmap.createBitmap(tam.first, tam.second, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bitmap)
+                canvas.drawPaint(Paint().apply {
+                    shader = LinearGradient(0f, 0f, tam.first.toFloat(), tam.second.toFloat(),
+                        Color.rgb(139, 74, 43), Color.rgb(201, 162, 39), Shader.TileMode.CLAMP)
+                })
+                canvas.drawText(nombre, 40f, 160f, Paint().apply { color = Color.WHITE; textSize = 120f })
+                almacen.archivo(nombre).outputStream().use { bitmap.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+            }
+    }
+
+    /** 5 items con datos de suelo = 2 páginas de tabla; después 2 de fichas con fotos. */
     @Test
-    fun planillaDeParadaConCincoHorizontesOcupaDosPaginas() {
+    fun planillaDeParadaConTablaYFichas() {
         val pdf = PlanillaPdf(context).generarParada(recorrido, parada)
-        assertEquals(2, renderizar(pdf, "parada"))
+        assertEquals(4, renderizar(pdf, "parada"))
     }
 
     @Test
     fun pdfDeRecorridoIncluyeCaratula() {
         val pdf = PlanillaPdf(context).generarRecorrido(recorrido)
-        assertEquals(3, renderizar(pdf, "recorrido"))
+        assertEquals(5, renderizar(pdf, "recorrido"))
     }
 
     /** Dibuja cada página en un PNG (a 2x) y devuelve la cantidad de páginas. */

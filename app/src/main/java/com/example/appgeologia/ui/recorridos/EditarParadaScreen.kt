@@ -1,5 +1,6 @@
 package com.example.appgeologia.ui.recorridos
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -54,10 +55,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.appgeologia.data.recorrido.DatosSitio
-import com.example.appgeologia.data.recorrido.Horizonte
+import com.example.appgeologia.archivos.AlmacenFotos
+import com.example.appgeologia.data.recorrido.ItemParada
+import com.example.appgeologia.data.recorrido.tieneDatosSuelo
+import com.example.appgeologia.ui.componentes.MiniaturaFoto
 import com.example.appgeologia.data.recorrido.OpcionesSuelo
 import com.example.appgeologia.data.recorrido.Parada
 import com.example.appgeologia.data.recorrido.Recorrido
@@ -70,6 +75,7 @@ import com.example.appgeologia.ui.componentes.CampoTexto
 import com.example.appgeologia.ui.componentes.TituloSeccion
 import com.example.appgeologia.ui.componentes.formatearCoordenada
 import com.example.appgeologia.ui.componentes.formatearFechaHora
+import com.example.appgeologia.ui.componentes.formatearHora
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -83,7 +89,7 @@ fun EditarParadaScreen(
     recorrido: Recorrido,
     paradaGuardada: Parada,
     viewModel: RecorridosViewModel,
-    onEditarHorizonte: (Long) -> Unit,
+    onEditarItem: (Long) -> Unit,
     onVolver: () -> Unit
 ) {
     val snackbar = remember { SnackbarHostState() }
@@ -167,16 +173,31 @@ fun EditarParadaScreen(
         snackbarHost = { SnackbarHost(snackbar) }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
+            ResumenParada(parada)
             PrimaryTabRow(selectedTabIndex = pestana) {
-                Tab(selected = pestana == 0, onClick = { pestana = 0 }, text = { Text("Sitio") })
                 Tab(
-                    selected = pestana == 1,
-                    onClick = { pestana = 1 },
-                    text = { Text("Horizontes (${paradaGuardada.horizontes.size})") }
+                    selected = pestana == 0,
+                    onClick = { pestana = 0 },
+                    text = { Text("Items (${paradaGuardada.items.size})") }
                 )
+                Tab(selected = pestana == 1, onClick = { pestana = 1 }, text = { Text("Ubicación y sitio") })
             }
 
             if (pestana == 0) {
+                PestanaItems(
+                    items = paradaGuardada.items,
+                    almacenFotos = viewModel.fotos,
+                    onAbrir = { id ->
+                        guardar()
+                        onEditarItem(id)
+                    },
+                    onAgregar = {
+                        guardar()
+                        onEditarItem(viewModel.agregarItem(recorrido.id, parada.id))
+                    },
+                    onEliminar = { id -> viewModel.eliminarItem(recorrido.id, parada.id, id) }
+                )
+            } else {
                 PestanaSitio(
                     parada = parada,
                     latTexto = latTexto,
@@ -199,19 +220,6 @@ fun EditarParadaScreen(
                     onSitio = { cambio -> parada = parada.copy(sitio = cambio(parada.sitio)) },
                     onObservaciones = { parada = parada.copy(observaciones = it) }
                 )
-            } else {
-                PestanaHorizontes(
-                    horizontes = paradaGuardada.horizontes,
-                    onAbrir = { id ->
-                        guardar()
-                        onEditarHorizonte(id)
-                    },
-                    onAgregar = {
-                        guardar()
-                        onEditarHorizonte(viewModel.agregarHorizonte(recorrido.id, parada.id))
-                    },
-                    onEliminar = { id -> viewModel.eliminarHorizonte(recorrido.id, parada.id, id) }
-                )
             }
         }
     }
@@ -220,7 +228,7 @@ fun EditarParadaScreen(
         AlertDialog(
             onDismissRequest = { confirmarEliminar = false },
             title = { Text("Eliminar parada ${parada.numero}") },
-            text = { Text("Se borrará la parada con todos sus horizontes. Esta acción no se puede deshacer.") },
+            text = { Text("Se borrará la parada con todos sus items y fotos. Esta acción no se puede deshacer.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmarEliminar = false
@@ -237,8 +245,8 @@ fun EditarParadaScreen(
         DialogoExportarPdf(
             titulo = "Exportar parada ${parada.numero}",
             generar = { context ->
-                // Se usa la versión en pantalla (con los horizontes guardados).
-                PlanillaPdf(context).generarParada(recorrido, paradaActual.copy(horizontes = paradaGuardada.horizontes))
+                // Se usa la versión en pantalla (con los items guardados).
+                PlanillaPdf(context).generarParada(recorrido, paradaActual.copy(items = paradaGuardada.items))
             },
             onCerrar = { exportar = false }
         )
@@ -344,70 +352,110 @@ private fun PestanaSitio(
     }
 }
 
+/** Hora y posición de la parada, siempre visibles arriba de las pestañas. */
 @Composable
-private fun PestanaHorizontes(
-    horizontes: List<Horizonte>,
+private fun ResumenParada(parada: Parada) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
+    ) {
+        Text(
+            "Hora: ${formatearFechaHora(parada.fecha)}",
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            if (parada.latitud != null && parada.longitud != null)
+                "Posición: ${formatearCoordenada(parada.latitud)}, ${formatearCoordenada(parada.longitud)}" +
+                    (parada.altitud?.let { " · %.0f m".format(it) } ?: "")
+            else "Sin posición: cargala en \"Ubicación y sitio\"",
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
+private fun PestanaItems(
+    items: List<ItemParada>,
+    almacenFotos: AlmacenFotos,
     onAbrir: (Long) -> Unit,
     onAgregar: () -> Unit,
     onEliminar: (Long) -> Unit
 ) {
-    var aEliminar by remember { mutableStateOf<Horizonte?>(null) }
+    var aEliminar by remember { mutableStateOf<ItemParada?>(null) }
 
     LazyColumn(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         item {
-            Text(
-                "Cargá los horizontes del perfil de arriba hacia abajo. En el PDF se imprimen 4 por página.",
-                style = MaterialTheme.typography.bodySmall
-            )
+            Button(onClick = onAgregar, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Agregar item u observación")
+            }
         }
-        itemsIndexed(horizontes, key = { _, h -> h.id }) { indice, horizonte ->
-            Card(modifier = Modifier.fillMaxWidth().clickable { onAbrir(horizonte.id) }) {
+        if (items.isEmpty()) {
+            item {
+                Text(
+                    "Cada item lleva título, descripción, fotos y, si describe un horizonte, " +
+                        "los datos de la planilla de suelos.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
+        itemsIndexed(items, key = { _, it -> it.id }) { indice, item ->
+            Card(modifier = Modifier.fillMaxWidth().clickable { onAbrir(item.id) }) {
                 Row(
-                    modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp),
+                    modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    item.fotos.firstOrNull()?.let { foto ->
+                        MiniaturaFoto(almacenFotos, foto, tamano = 64)
+                        Spacer(Modifier.width(12.dp))
+                    }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            horizonte.nombre.ifBlank { "Horizonte ${indice + 1} (sin nombre)" },
+                            item.titulo.ifBlank { "Item ${indice + 1} (sin título)" },
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
+                        if (item.descripcion.isNotBlank()) {
+                            Text(
+                                item.descripcion,
+                                style = MaterialTheme.typography.bodySmall,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                         Text(
                             listOfNotNull(
-                                horizonte.profundidad.takeIf { it.isNotBlank() }?.let { "$it cm" },
-                                horizonte.textura.takeIf { it.isNotBlank() },
-                                horizonte.colorHumedo.takeIf { it.isNotBlank() }
-                            ).joinToString(" · ").ifEmpty { "Tocá para completar" },
-                            style = MaterialTheme.typography.bodySmall
+                                item.fecha.takeIf { it > 0 }?.let { formatearHora(it) },
+                                "${item.fotos.size} foto(s)",
+                                "Planilla de suelos".takeIf { item.tieneDatosSuelo() }
+                            ).joinToString(" · "),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
-                    IconButton(onClick = { aEliminar = horizonte }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Eliminar horizonte")
+                    IconButton(onClick = { aEliminar = item }) {
+                        Icon(Icons.Filled.Delete, contentDescription = "Eliminar item")
                     }
                 }
             }
         }
-        item {
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = onAgregar, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Agregar horizonte")
-            }
-        }
     }
 
-    aEliminar?.let { horizonte ->
+    aEliminar?.let { item ->
         AlertDialog(
             onDismissRequest = { aEliminar = null },
-            title = { Text("Eliminar horizonte") },
-            text = { Text("¿Eliminar el horizonte ${horizonte.nombre.ifBlank { "sin nombre" }}?") },
+            title = { Text("Eliminar item") },
+            text = { Text("¿Eliminar \"${item.titulo.ifBlank { "sin título" }}\" y sus ${item.fotos.size} foto(s)?") },
             confirmButton = {
                 TextButton(onClick = {
-                    onEliminar(horizonte.id)
+                    onEliminar(item.id)
                     aEliminar = null
                 }) { Text("Eliminar") }
             },

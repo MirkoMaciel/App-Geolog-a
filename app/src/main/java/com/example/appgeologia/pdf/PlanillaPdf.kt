@@ -12,7 +12,10 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import com.example.appgeologia.data.recorrido.DatosSitio
 import com.example.appgeologia.data.recorrido.GrupoOpciones
-import com.example.appgeologia.data.recorrido.Horizonte
+import com.example.appgeologia.archivos.AlmacenExportaciones
+import com.example.appgeologia.archivos.AlmacenFotos
+import com.example.appgeologia.data.recorrido.ItemParada
+import com.example.appgeologia.data.recorrido.tieneDatosSuelo
 import com.example.appgeologia.data.recorrido.Opcion
 import com.example.appgeologia.data.recorrido.OpcionesSuelo
 import com.example.appgeologia.data.recorrido.Parada
@@ -25,8 +28,11 @@ import java.util.Locale
 /**
  * Dibuja la planilla de descripción de suelos en un PDF, copiando el formato de la
  * planilla en papel: un encabezado con los datos del sitio y una tabla con una columna
- * por horizonte (4 por página). En los campos con opciones fijas se imprimen todas las
- * opciones y se marca con un círculo la elegida, como se haría a mano.
+ * por item con datos de suelo (4 por página). En los campos con opciones fijas se
+ * imprimen todas las opciones y se marca con un círculo la elegida, como se haría a mano.
+ *
+ * Después de la planilla va una ficha por cada item con su título, descripción y fotos.
+ * Los PDF quedan guardados en "Mis exportaciones".
  */
 class PlanillaPdf(private val context: Context) {
 
@@ -44,6 +50,13 @@ class PlanillaPdf(private val context: Context) {
     private val anchoForma = 34f
     private val altoFila = 16f
     private val altoFilaDoble = 22f
+
+    // Fichas de items
+    private val altoFoto = 200f
+    private val separacionFotos = 10f
+
+    private val fotos = AlmacenFotos(context)
+    private val exportaciones = AlmacenExportaciones(context)
 
     private val colorMarca = Color.rgb(192, 57, 43)
 
@@ -76,13 +89,13 @@ class PlanillaPdf(private val context: Context) {
     private class Fila(
         val grupo: String?,
         val etiqueta: String,
-        val valor: (Horizonte) -> String,
+        val valor: (ItemParada) -> String,
         val opciones: GrupoOpciones? = null,
         val alto: Float
     )
 
     private val filas: List<Fila> = listOf(
-        Fila(null, "Horizontes", { it.nombre }, alto = altoFila),
+        Fila(null, "Horizontes", { it.nombre.ifBlank { it.titulo } }, alto = altoFila),
         Fila(null, "Profundidad (cm)", { it.profundidad }, alto = altoFila),
         Fila("Límite", "Definición", { it.limiteDefinicion }, OpcionesSuelo.limiteDefinicion, altoFila),
         Fila("Límite", "Topografía", { it.limiteTopografia }, OpcionesSuelo.limiteTopografia, altoFila),
@@ -153,7 +166,7 @@ class PlanillaPdf(private val context: Context) {
     fun generarParada(recorrido: Recorrido, parada: Parada): File {
         val documento = Documento()
         dibujarParada(documento, recorrido, parada)
-        return documento.guardar(archivoSalida("Parada_${parada.numero}_${recorrido.nombre}"))
+        return documento.guardar(exportaciones.nuevoArchivo("Parada_${parada.numero}_${recorrido.nombre}"))
     }
 
     /** Genera un PDF con una carátula del recorrido y la planilla de cada parada. */
@@ -161,26 +174,26 @@ class PlanillaPdf(private val context: Context) {
         val documento = Documento()
         dibujarCaratula(documento.nuevaPagina(), recorrido)
         recorrido.paradas.sortedBy { it.numero }.forEach { dibujarParada(documento, recorrido, it) }
-        return documento.guardar(archivoSalida("Recorrido_${recorrido.nombre}"))
-    }
-
-    private fun archivoSalida(nombre: String): File {
-        val limpio = nombre.replace(Regex("[^A-Za-z0-9_-]+"), "_").trim('_').ifEmpty { "planilla" }
-        return File(File(context.cacheDir, "pdfs"), "$limpio.pdf")
+        return documento.guardar(exportaciones.nuevoArchivo("Recorrido_${recorrido.nombre}"))
     }
 
     // ------------------------------------------------------------------ Parada
 
     private fun dibujarParada(documento: Documento, recorrido: Recorrido, parada: Parada) {
-        // Siempre al menos una página, aunque no haya horizontes (sirve como planilla en blanco).
-        val bloques = parada.horizontes.chunked(horizontesPorPagina).ifEmpty { listOf(emptyList()) }
+        // En la tabla van los items que tienen datos de suelo, 4 por página. Siempre se
+        // dibuja al menos una página, aunque no haya ninguno (sirve como planilla en blanco).
+        val columnas = parada.items.filter { it.tieneDatosSuelo() }
+        val bloques = columnas.chunked(horizontesPorPagina).ifEmpty { listOf(emptyList()) }
 
         var y = 0f
-        bloques.forEachIndexed { i, horizontes ->
+        bloques.forEachIndexed { i, bloque ->
             val canvas = documento.nuevaPagina()
-            y = dibujarTitulo(canvas, recorrido, parada, continuacion = i > 0)
+            y = dibujarTitulo(
+                canvas, recorrido, parada,
+                if (i == 0) "PLANILLA DE DESCRIPCIÓN DE SUELOS" else "PLANILLA DE DESCRIPCIÓN DE SUELOS (continuación)"
+            )
             if (i == 0) y = dibujarEncabezado(canvas, y + 6f, parada) + 12f
-            y = dibujarTablaHorizontes(canvas, y, horizontes)
+            y = dibujarTablaHorizontes(canvas, y, bloque)
         }
 
         if (parada.observaciones.isNotBlank()) {
@@ -188,19 +201,110 @@ class PlanillaPdf(private val context: Context) {
             val canvas = documento.canvas
             if (canvas == null || espacioRestante < 70f) {
                 val nueva = documento.nuevaPagina()
-                y = dibujarTitulo(nueva, recorrido, parada, continuacion = true)
+                y = dibujarTitulo(nueva, recorrido, parada, "PLANILLA DE DESCRIPCIÓN DE SUELOS (continuación)")
                 dibujarObservaciones(nueva, y + 10f, parada.observaciones)
             } else {
                 dibujarObservaciones(canvas, y + 10f, parada.observaciones)
             }
         }
+
+        if (parada.items.isNotEmpty()) dibujarFichasItems(documento, recorrido, parada)
     }
 
-    private fun dibujarTitulo(canvas: Canvas, recorrido: Recorrido, parada: Parada, continuacion: Boolean): Float {
+    // ------------------------------------------------------------------ Fichas de items
+
+    /**
+     * Una ficha por item: título, hora, descripción y sus fotos en dos columnas.
+     * Las fichas se encadenan y pasan a otra página cuando no entran.
+     */
+    private fun dibujarFichasItems(documento: Documento, recorrido: Recorrido, parada: Parada) {
+        val limite = altoPagina - margen - 20f
+        val tituloPagina = "ITEMS DE LA PARADA N° ${parada.numero}"
+        var canvas = documento.nuevaPagina()
+        var y = dibujarTitulo(canvas, recorrido, parada, tituloPagina) + 10f
+
+        fun paginaNueva() {
+            canvas = documento.nuevaPagina()
+            y = dibujarTitulo(canvas, recorrido, parada, "$tituloPagina (continuación)") + 10f
+        }
+
+        parada.items.forEachIndexed { i, item ->
+            val altoEncabezado = 20f
+            val descripcion = item.descripcion.takeIf { it.isNotBlank() }?.let { layoutTexto(it, 9f, anchoUtil - 8f) }
+            val altoDescripcion = descripcion?.height?.plus(8f) ?: 0f
+            val altoMinimo = altoEncabezado + altoDescripcion + if (item.fotos.isNotEmpty()) altoFoto else 0f
+            if (y + minOf(altoMinimo, limite - margen - 40f) > limite) paginaNueva()
+
+            // Encabezado de la ficha
+            val fondo = Paint().apply { color = Color.rgb(240, 230, 222); style = Paint.Style.FILL }
+            canvas.drawRect(margen, y, margen + anchoUtil, y + altoEncabezado, fondo)
+            canvas.drawRect(margen, y, margen + anchoUtil, y + altoEncabezado, lapizLinea)
+            textoNegrita.textSize = 10f
+            canvas.drawText("${i + 1}. ${item.titulo.ifBlank { "Item sin título" }}", margen + 5f, y + 14f, textoNegrita)
+            texto.textSize = 8f
+            val detalle = listOfNotNull(
+                item.fecha.takeIf { it > 0 }?.let { horaCorta(it) },
+                item.nombre.takeIf { item.tieneDatosSuelo() }?.let { nombre ->
+                    "Columna \"${nombre.ifBlank { item.titulo.ifBlank { "s/n" } }}\" de la planilla"
+                }
+            ).joinToString("  ·  ")
+            canvas.drawText(detalle, margen + anchoUtil - 5f - texto.measureText(detalle), y + 14f, texto)
+            y += altoEncabezado + 4f
+
+            // Descripción
+            if (descripcion != null) {
+                canvas.save()
+                canvas.clipRect(margen, y, margen + anchoUtil, limite)
+                canvas.translate(margen + 4f, y)
+                descripcion.draw(canvas)
+                canvas.restore()
+                y += altoDescripcion
+            }
+
+            // Fotos en dos columnas
+            val anchoCelda = (anchoUtil - separacionFotos) / 2
+            item.fotos.chunked(2).forEach { fila ->
+                if (y + altoFoto > limite) paginaNueva()
+                fila.forEachIndexed { col, nombre ->
+                    val izquierda = margen + col * (anchoCelda + separacionFotos)
+                    dibujarFoto(canvas, nombre, RectF(izquierda, y, izquierda + anchoCelda, y + altoFoto))
+                }
+                y += altoFoto + separacionFotos
+            }
+            y += 14f
+        }
+    }
+
+    /** Dibuja la foto dentro de [rect] sin deformarla, centrada y con un borde fino. */
+    private fun dibujarFoto(canvas: Canvas, nombre: String, rect: RectF) {
+        val bitmap = fotos.cargarReducida(nombre, 1200)
+        if (bitmap == null) {
+            canvas.drawRect(rect, lapizLinea)
+            textoAjustado(canvas, rect, "Foto no disponible", tamMax = 8f, centrado = true)
+            return
+        }
+        val escala = minOf(rect.width() / bitmap.width, rect.height() / bitmap.height)
+        val ancho = bitmap.width * escala
+        val alto = bitmap.height * escala
+        val destino = RectF(
+            rect.centerX() - ancho / 2, rect.centerY() - alto / 2,
+            rect.centerX() + ancho / 2, rect.centerY() + alto / 2
+        )
+        canvas.drawBitmap(bitmap, null, destino, Paint(Paint.FILTER_BITMAP_FLAG))
+        canvas.drawRect(destino, lapizLinea)
+        bitmap.recycle()
+    }
+
+    private fun layoutTexto(contenido: String, tam: Float, ancho: Float): StaticLayout {
+        val pincel = TextPaint(texto).apply { textSize = tam }
+        return StaticLayout.Builder.obtain(contenido, 0, contenido.length, pincel, ancho.toInt())
+            .setIncludePad(false)
+            .build()
+    }
+
+    private fun dibujarTitulo(canvas: Canvas, recorrido: Recorrido, parada: Parada, titulo: String): Float {
         val y = margen + 10f
         textoNegrita.textSize = 11f
-        val titulo = if (continuacion) "PLANILLA DE DESCRIPCIÓN DE SUELOS (continuación)"
-        else "PLANILLA DE DESCRIPCIÓN DE SUELOS"
         canvas.drawText(titulo, margen, y, textoNegrita)
         texto.textSize = 8f
         val derecha = "Recorrido: ${recorrido.nombre}  ·  Parada N° ${parada.numero}"
@@ -296,7 +400,7 @@ class PlanillaPdf(private val context: Context) {
 
     // ------------------------------------------------------------------ Tabla de horizontes
 
-    private fun dibujarTablaHorizontes(canvas: Canvas, arriba: Float, horizontes: List<Horizonte>): Float {
+    private fun dibujarTablaHorizontes(canvas: Canvas, arriba: Float, horizontes: List<ItemParada>): Float {
         val xEtiqueta = margen + anchoGrupo
         val xDatos = xEtiqueta + anchoEtiqueta
 
@@ -462,7 +566,7 @@ class PlanillaPdf(private val context: Context) {
         // Tabla resumen de paradas
         y += 10f
         val columnas = listOf("N°" to 30f, "Fecha" to 70f, "Calicata" to 110f, "Latitud" to 80f,
-            "Longitud" to 80f, "Altitud" to 60f, "Horizontes" to 109f)
+            "Longitud" to 80f, "Altitud" to 60f, "Items" to 109f)
         val alto = 16f
         fun filaTabla(valores: List<String>, negrita: Boolean) {
             var x = margen
@@ -482,7 +586,7 @@ class PlanillaPdf(private val context: Context) {
                     p.numero.toString(), fechaCorta(p.fecha), p.sitio.calicata,
                     coordenada(p.latitud), coordenada(p.longitud),
                     p.altitud?.let { "%.0f m".format(Locale.US, it) } ?: "",
-                    p.horizontes.joinToString(", ") { it.nombre.ifBlank { "s/n" } }
+                    p.items.size.toString()
                 ),
                 negrita = false
             )
@@ -571,6 +675,9 @@ class PlanillaPdf(private val context: Context) {
         }
         canvas.restore()
     }
+
+    private fun horaCorta(millis: Long): String =
+        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(millis))
 
     private fun fechaCorta(millis: Long): String =
         SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(millis))

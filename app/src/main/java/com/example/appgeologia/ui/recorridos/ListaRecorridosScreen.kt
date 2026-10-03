@@ -135,7 +135,7 @@ private fun TarjetaRecorrido(recorrido: Recorrido, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DialogoNuevoRecorrido(
+fun DialogoNuevoRecorrido(
     onCancelar: () -> Unit,
     onCrear: (nombre: String, tipo: TipoSalida, proyecto: String, descripcion: String) -> Unit
 ) {

@@ -1,10 +1,13 @@
 package com.example.appgeologia
 
+import com.example.appgeologia.data.recorrido.ItemParada
 import com.example.appgeologia.data.recorrido.RecorridoRepository
 import com.example.appgeologia.data.recorrido.TipoSalida
+import com.example.appgeologia.data.recorrido.tieneDatosSuelo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -43,31 +46,31 @@ class RecorridoRepositoryTest {
         val r1 = repo(archivo)
         val id = r1.crearRecorrido("Salida", TipoSalida.SUELOS, "", "")
         val paradaId = r1.crearParada(id, -45.5, -67.5, 120.0)
-        val horizonteId = r1.agregarHorizonte(id, paradaId)
-        val h = r1.buscarParada(id, paradaId)!!.horizontes.first()
-        r1.guardarHorizonte(id, paradaId, h.copy(nombre = "Bt1", reaccionHcl = "FEf"))
+        val itemId = r1.agregarItem(id, paradaId)
+        val h = r1.buscarParada(id, paradaId)!!.items.first()
+        r1.guardarItem(id, paradaId, h.copy(nombre = "Bt1", reaccionHcl = "FEf"))
 
         val r2 = repo(archivo)
-        val horizonte = r2.buscarParada(id, paradaId)!!.horizontes.single()
-        assertEquals(horizonteId, horizonte.id)
-        assertEquals("Bt1", horizonte.nombre)
-        assertEquals("FEf", horizonte.reaccionHcl)
+        val item = r2.buscarParada(id, paradaId)!!.items.single()
+        assertEquals(itemId, item.id)
+        assertEquals("Bt1", item.nombre)
+        assertEquals("FEf", item.reaccionHcl)
         assertEquals(120.0, r2.buscarParada(id, paradaId)!!.altitud!!, 0.0)
     }
 
     @Test
-    fun guardarParadaNoPisaLosHorizontes() {
+    fun guardarParadaNoPisaLosItems() {
         val r = repo()
         val id = r.crearRecorrido("Salida", TipoSalida.SUELOS, "", "")
         val paradaId = r.crearParada(id)
-        val vieja = r.buscarParada(id, paradaId)!! // copia sin horizontes
+        val vieja = r.buscarParada(id, paradaId)!! // copia sin items
 
-        r.agregarHorizonte(id, paradaId)
+        r.agregarItem(id, paradaId)
         r.guardarParada(id, vieja.copy(sitio = vieja.sitio.copy(calicata = "C-12")))
 
         val parada = r.buscarParada(id, paradaId)!!
         assertEquals("C-12", parada.sitio.calicata)
-        assertEquals(1, parada.horizontes.size)
+        assertEquals(1, parada.items.size)
     }
 
     @Test
@@ -79,8 +82,8 @@ class RecorridoRepositoryTest {
         )
         val id = r.crearRecorrido("Salida", TipoSalida.SUELOS, "", "")
         val p = r.crearParada(id)
-        val h1 = r.agregarHorizonte(id, p)
-        val h2 = r.agregarHorizonte(id, p)
+        val h1 = r.agregarItem(id, p)
+        val h2 = r.agregarItem(id, p)
         assertEquals(4, setOf(id, p, h1, h2).size)
         assertNotEquals(h1, h2)
     }
@@ -102,5 +105,44 @@ class RecorridoRepositoryTest {
         val r = repo(archivo)
         assertTrue(r.recorridos.value.isEmpty())
         assertTrue(File(carpeta.root, "roto.json.danado").exists())
+    }
+
+    @Test
+    fun cargaDatosGuardadosConLaVersionAnterior() {
+        // En la primera versión los items se llamaban "horizontes" y no tenían título ni fotos.
+        val archivo = File(carpeta.root, "viejo.json").apply {
+            writeText(
+                """[{"id":1,"nombre":"Salida vieja","fechaInicio":0,"paradas":[
+                   {"id":2,"numero":1,"fecha":0,"horizontes":[{"id":3,"nombre":"A","textura":"Franco"}]}]}]"""
+            )
+        }
+        val item = repo(archivo).buscarParada(1, 2)!!.items.single()
+        assertEquals("A", item.nombre)
+        assertEquals("Franco", item.textura)
+        assertTrue(item.fotos.isEmpty())
+        assertTrue(item.tieneDatosSuelo())
+    }
+
+    @Test
+    fun itemSoloConTituloYFotosNoTieneDatosDeSuelo() {
+        val item = ItemParada(id = 1, titulo = "Afloramiento", descripcion = "Basalto", fotos = listOf("a.jpg"), fecha = 5)
+        assertFalse(item.tieneDatosSuelo())
+        assertTrue(item.copy(reaccionHcl = "SEf").tieneDatosSuelo())
+    }
+
+    @Test
+    fun fotosEnUsoIncluyeTodasLasParadas() {
+        val r = repo()
+        val id = r.crearRecorrido("Salida", TipoSalida.SUELOS, "", "")
+        val p1 = r.crearParada(id)
+        val p2 = r.crearParada(id)
+        val i1 = r.agregarItem(id, p1)
+        val i2 = r.agregarItem(id, p2)
+        r.guardarItem(id, p1, ItemParada(id = i1, fotos = listOf("a.jpg", "b.jpg")))
+        r.guardarItem(id, p2, ItemParada(id = i2, fotos = listOf("c.jpg")))
+        assertEquals(setOf("a.jpg", "b.jpg", "c.jpg"), r.fotosEnUso())
+
+        r.eliminarItem(id, p1, i1)
+        assertEquals(setOf("c.jpg"), r.fotosEnUso())
     }
 }
