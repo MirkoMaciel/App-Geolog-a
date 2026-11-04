@@ -1,5 +1,6 @@
 package com.example.appgeologia.ui.inicio
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +18,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Share
@@ -44,16 +48,17 @@ import androidx.compose.ui.unit.dp
 import com.example.appgeologia.data.recorrido.GrupoOpciones
 import com.example.appgeologia.data.recorrido.OpcionesSuelo
 import com.example.appgeologia.data.recorrido.Recorrido
-import com.example.appgeologia.data.recorrido.TipoSalida
 import com.example.appgeologia.ui.componentes.formatearFecha
+import com.example.appgeologia.ui.componentes.formatearFechaHora
 import com.example.appgeologia.ui.recorridos.DialogoNuevoRecorrido
+import com.example.appgeologia.ui.recorridos.NuevaSalida
 
 /** Pantalla de bienvenida con accesos rápidos. */
 @Composable
 fun InicioScreen(
     recorridos: List<Recorrido>,
     cantidadExportaciones: Int,
-    onCrearRecorrido: (nombre: String, tipo: TipoSalida, proyecto: String, descripcion: String) -> Unit,
+    onCrearRecorrido: (NuevaSalida) -> Unit,
     onAbrirRecorrido: (Long) -> Unit,
     onIrARecorridos: () -> Unit,
     onIrAExportaciones: () -> Unit,
@@ -62,10 +67,11 @@ fun InicioScreen(
     var dialogoNuevo by rememberSaveable { mutableStateOf(false) }
     var dialogoAyuda by rememberSaveable { mutableStateOf(false) }
     var dialogoGuia by rememberSaveable { mutableStateOf(false) }
+    var menuAbierto by rememberSaveable { mutableStateOf(false) }
 
-    val enCurso = recorridos.filterNot { it.finalizado }.maxByOrNull { it.fechaInicio }
-    val paradas = recorridos.sumOf { it.paradas.size }
-    val fotos = recorridos.sumOf { r -> r.paradas.sumOf { p -> p.items.sumOf { it.fotos.size } } }
+    val salidasEnCurso = recorridos.filterNot { it.finalizado }
+    // La última salida activa: la que tuvo movimiento más reciente (nueva parada o item).
+    val ultimaActiva = salidasEnCurso.maxByOrNull { ultimaActividad(it) }
 
     Scaffold(bottomBar = barraInferior) { innerPadding ->
         Column(
@@ -107,30 +113,34 @@ fun InicioScreen(
             ) {
                 // ----- Resumen -----
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Contador("Recorridos", recorridos.size, Modifier.weight(1f))
-                    Contador("Paradas", paradas, Modifier.weight(1f))
-                    Contador("Fotos", fotos, Modifier.weight(1f))
+                    Contador("Salidas totales", recorridos.size, Modifier.weight(1f))
+                    Contador("Salidas en curso", salidasEnCurso.size, Modifier.weight(1f))
                 }
 
-                // ----- Recorrido en curso -----
-                if (enCurso != null) {
+                // ----- Última salida activa -----
+                if (ultimaActiva != null) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Recorrido en curso", style = MaterialTheme.typography.labelLarge)
+                            Text("Última salida activa", style = MaterialTheme.typography.labelLarge)
                             Text(
-                                enCurso.nombre,
+                                ultimaActiva.nombre,
                                 style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                "Iniciado el ${formatearFecha(enCurso.fechaInicio)} · ${enCurso.paradas.size} parada(s)",
+                                "Iniciada el ${formatearFecha(ultimaActiva.fechaInicio)} · " +
+                                    "${ultimaActiva.paradas.size} parada(s)",
                                 style = MaterialTheme.typography.bodyMedium
                             )
+                            Text(
+                                "Último movimiento: ${formatearFechaHora(ultimaActividad(ultimaActiva))}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
                             Spacer(Modifier.height(8.dp))
-                            Button(onClick = { onAbrirRecorrido(enCurso.id) }) { Text("Continuar recorrido") }
+                            Button(onClick = { onAbrirRecorrido(ultimaActiva.id) }) { Text("Continuar salida") }
                         }
                     }
                 }
@@ -145,14 +155,48 @@ fun InicioScreen(
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Hacer un nuevo recorrido", style = MaterialTheme.typography.titleMedium)
+                    Text("Nueva salida de campo", style = MaterialTheme.typography.titleMedium)
                 }
 
-                // ----- Accesos -----
-                Acceso(Icons.Filled.Place, "Mis recorridos", "${recorridos.size} guardado(s)", onIrARecorridos)
-                Acceso(Icons.Filled.Share, "Mis exportaciones", "$cantidadExportaciones PDF generado(s)", onIrAExportaciones)
-                Acceso(Icons.AutoMirrored.Filled.List, "Guía de la planilla", "Qué significa cada abreviatura") { dialogoGuia = true }
-                Acceso(Icons.Filled.Info, "Cómo se usa", "Los pasos de una salida de campo") { dialogoAyuda = true }
+                // ----- Más opciones (desplegable) -----
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { menuAbierto = !menuAbierto }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Menu, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.width(16.dp))
+                        Text(
+                            "Más opciones",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            if (menuAbierto) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                            contentDescription = if (menuAbierto) "Ocultar opciones" else "Mostrar opciones"
+                        )
+                    }
+                    AnimatedVisibility(visible = menuAbierto) {
+                        Column {
+                            HorizontalDivider()
+                            Acceso(Icons.Filled.Place, "Mis salidas", "${recorridos.size} guardada(s)", onIrARecorridos)
+                            Acceso(
+                                Icons.Filled.Share, "Mis exportaciones",
+                                "$cantidadExportaciones PDF generado(s)", onIrAExportaciones
+                            )
+                            Acceso(Icons.AutoMirrored.Filled.List, "Guía de la planilla", "Qué significa cada abreviatura") {
+                                dialogoGuia = true
+                            }
+                            Acceso(Icons.Filled.Info, "Cómo se usa", "Los pasos de una salida de campo") {
+                                dialogoAyuda = true
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -160,9 +204,9 @@ fun InicioScreen(
     if (dialogoNuevo) {
         DialogoNuevoRecorrido(
             onCancelar = { dialogoNuevo = false },
-            onCrear = { nombre, tipo, proyecto, descripcion ->
+            onCrear = { nueva ->
                 dialogoNuevo = false
-                onCrearRecorrido(nombre, tipo, proyecto, descripcion)
+                onCrearRecorrido(nueva)
             }
         )
     }
@@ -188,31 +232,45 @@ private fun Contador(titulo: String, valor: Int, modifier: Modifier = Modifier) 
     }
 }
 
+/** Una opción dentro del menú desplegable "Más opciones". */
 @Composable
 private fun Acceso(icono: ImageVector, titulo: String, detalle: String, onClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(icono, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Spacer(Modifier.width(16.dp))
-            Column {
-                Text(titulo, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(detalle, style = MaterialTheme.typography.bodySmall)
-            }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icono, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(16.dp))
+        Column {
+            Text(titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(detalle, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
+/** Momento del último movimiento de una salida: inicio, última parada o último item cargado. */
+private fun ultimaActividad(recorrido: Recorrido): Long =
+    maxOf(
+        recorrido.fechaInicio,
+        recorrido.paradas.maxOfOrNull { parada ->
+            maxOf(parada.fecha, parada.items.maxOfOrNull { it.fecha } ?: 0L)
+        } ?: 0L
+    )
+
 @Composable
 private fun DialogoComoSeUsa(onCerrar: () -> Unit) {
     val pasos = listOf(
-        "Iniciá un recorrido con \"Hacer un nuevo recorrido\".",
+        "Iniciá una salida con \"Nueva salida de campo\".",
         "En cada lugar donde te detengas, agregá una parada: se guarda la hora y la posición " +
             "(con el GPS, a mano o manteniendo presionado el mapa).",
-        "Dentro de la parada agregá items u observaciones: título, descripción y fotos " +
+        "Dentro de la parada tocá \"Añadir nuevo horizonte\": título, descripción y fotos " +
             "(sacadas en el momento o elegidas de los archivos).",
-        "Si el item describe un horizonte del suelo, desplegá \"Datos de la planilla de suelos\" y completalo.",
-        "En \"Ubicación y sitio\" cargá los datos generales: calicata, geomorfología, vegetación, etc.",
-        "Exportá la parada o el recorrido completo en PDF. Los archivos quedan en \"Mis exportaciones\"."
+        "Para que el horizonte aparezca en la tabla del PDF, desplegá \"Datos de la planilla de suelos\" y completalo.",
+        "En \"Descripción general\" cargá los datos del sitio: calicata, geomorfología, vegetación, etc.",
+        "Exportá la parada o la salida completa en PDF. Los archivos quedan en \"Mis exportaciones\"."
     )
     AlertDialog(
         onDismissRequest = onCerrar,

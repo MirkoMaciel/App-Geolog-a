@@ -1,10 +1,13 @@
 package com.example.appgeologia.ui.recorridos
 
+import com.example.appgeologia.ui.componentes.SeccionDesplegable
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,8 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -32,11 +33,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -45,7 +44,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -96,7 +94,8 @@ fun EditarParadaScreen(
     val scope = rememberCoroutineScope()
 
     var parada by remember(paradaGuardada.id) { mutableStateOf(paradaGuardada) }
-    var pestana by rememberSaveable { mutableIntStateOf(0) }
+    var descripcionAbierta by rememberSaveable { mutableStateOf(false) }
+    var horizontesAbiertos by rememberSaveable { mutableStateOf(true) }
     var confirmarEliminar by rememberSaveable { mutableStateOf(false) }
     var exportar by rememberSaveable { mutableStateOf(false) }
     var eliminada by remember { mutableStateOf(false) }
@@ -172,33 +171,23 @@ fun EditarParadaScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            ResumenParada(parada)
-            PrimaryTabRow(selectedTabIndex = pestana) {
-                Tab(
-                    selected = pestana == 0,
-                    onClick = { pestana = 0 },
-                    text = { Text("Items (${paradaGuardada.items.size})") }
-                )
-                Tab(selected = pestana == 1, onClick = { pestana = 1 }, text = { Text("Ubicación y sitio") })
-            }
-
-            if (pestana == 0) {
-                PestanaItems(
-                    items = paradaGuardada.items,
-                    almacenFotos = viewModel.fotos,
-                    onAbrir = { id ->
-                        guardar()
-                        onEditarItem(id)
-                    },
-                    onAgregar = {
-                        guardar()
-                        onEditarItem(viewModel.agregarItem(recorrido.id, parada.id))
-                    },
-                    onEliminar = { id -> viewModel.eliminarItem(recorrido.id, parada.id, id) }
-                )
-            } else {
-                PestanaSitio(
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // ----- Descripción general (desplegable, campos de texto libre) -----
+            SeccionDesplegable(
+                titulo = "Descripción general",
+                abierta = descripcionAbierta,
+                onCambiar = { descripcionAbierta = it },
+                icono = Icons.Filled.Edit,
+                detalle = "Ubicación, datos del sitio y observaciones"
+            ) {
+                DescripcionGeneral(
                     parada = parada,
                     latTexto = latTexto,
                     lonTexto = lonTexto,
@@ -221,6 +210,40 @@ fun EditarParadaScreen(
                     onObservaciones = { parada = parada.copy(observaciones = it) }
                 )
             }
+
+            // ----- Horizontes -----
+            Button(
+                onClick = {
+                    guardar()
+                    horizontesAbiertos = true
+                    onEditarItem(viewModel.agregarItem(recorrido.id, parada.id))
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null)
+                Spacer(Modifier.width(8.dp))
+                Text("Añadir nuevo horizonte")
+            }
+
+            // El desplegable aparece recién cuando hay al menos un horizonte.
+            if (paradaGuardada.items.isNotEmpty()) {
+                SeccionDesplegable(
+                    titulo = "Horizontes (${paradaGuardada.items.size})",
+                    abierta = horizontesAbiertos,
+                    onCambiar = { horizontesAbiertos = it },
+                    icono = Icons.AutoMirrored.Filled.List
+                ) {
+                    ListaHorizontes(
+                        items = paradaGuardada.items,
+                        almacenFotos = viewModel.fotos,
+                        onAbrir = { id ->
+                            guardar()
+                            onEditarItem(id)
+                        },
+                        onEliminar = { id -> viewModel.eliminarItem(recorrido.id, parada.id, id) }
+                    )
+                }
+            }
         }
     }
 
@@ -228,7 +251,7 @@ fun EditarParadaScreen(
         AlertDialog(
             onDismissRequest = { confirmarEliminar = false },
             title = { Text("Eliminar parada ${parada.numero}") },
-            text = { Text("Se borrará la parada con todos sus items y fotos. Esta acción no se puede deshacer.") },
+            text = { Text("Se borrará la parada con todos sus horizontes y fotos. Esta acción no se puede deshacer.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmarEliminar = false
@@ -245,7 +268,7 @@ fun EditarParadaScreen(
         DialogoExportarPdf(
             titulo = "Exportar parada ${parada.numero}",
             generar = { context ->
-                // Se usa la versión en pantalla (con los items guardados).
+                // Se usa la versión en pantalla (con los horizontes guardados).
                 PlanillaPdf(context).generarParada(recorrido, paradaActual.copy(items = paradaGuardada.items))
             },
             onCerrar = { exportar = false }
@@ -254,7 +277,7 @@ fun EditarParadaScreen(
 }
 
 @Composable
-private fun PestanaSitio(
+private fun DescripcionGeneral(
     parada: Parada,
     latTexto: String,
     lonTexto: String,
@@ -268,13 +291,7 @@ private fun PestanaSitio(
     onObservaciones: (String) -> Unit
 ) {
     val s = parada.sitio
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp)
-            .padding(bottom = 32.dp)
-    ) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
         TituloSeccion("Ubicación")
         Text("Fecha: ${formatearFechaHora(parada.fecha)}", style = MaterialTheme.typography.bodyMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -352,62 +369,22 @@ private fun PestanaSitio(
     }
 }
 
-/** Hora y posición de la parada, siempre visibles arriba de las pestañas. */
+/** Lista de horizontes de la parada (dentro del desplegable "Horizontes"). */
 @Composable
-private fun ResumenParada(parada: Parada) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .padding(horizontal = 16.dp, vertical = 10.dp)
-    ) {
-        Text(
-            "Hora: ${formatearFechaHora(parada.fecha)}",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            if (parada.latitud != null && parada.longitud != null)
-                "Posición: ${formatearCoordenada(parada.latitud)}, ${formatearCoordenada(parada.longitud)}" +
-                    (parada.altitud?.let { " · %.0f m".format(it) } ?: "")
-            else "Sin posición: cargala en \"Ubicación y sitio\"",
-            style = MaterialTheme.typography.bodyMedium
-        )
-    }
-}
-
-@Composable
-private fun PestanaItems(
+private fun ListaHorizontes(
     items: List<ItemParada>,
     almacenFotos: AlmacenFotos,
     onAbrir: (Long) -> Unit,
-    onAgregar: () -> Unit,
     onEliminar: (Long) -> Unit
 ) {
     var aEliminar by remember { mutableStateOf<ItemParada?>(null) }
 
-    LazyColumn(
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        item {
-            Button(onClick = onAgregar, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Agregar item u observación")
-            }
-        }
-        if (items.isEmpty()) {
-            item {
-                Text(
-                    "Cada item lleva título, descripción, fotos y, si describe un horizonte, " +
-                        "los datos de la planilla de suelos.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
-        itemsIndexed(items, key = { _, it -> it.id }) { indice, item ->
-            Card(modifier = Modifier.fillMaxWidth().clickable { onAbrir(item.id) }) {
+    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items.forEachIndexed { indice, item ->
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                modifier = Modifier.fillMaxWidth().clickable { onAbrir(item.id) }
+            ) {
                 Row(
                     modifier = Modifier.padding(start = 12.dp, top = 12.dp, bottom = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -418,7 +395,7 @@ private fun PestanaItems(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            item.titulo.ifBlank { "Item ${indice + 1} (sin título)" },
+                            item.titulo.ifBlank { "Horizonte ${indice + 1} (sin título)" },
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -441,7 +418,7 @@ private fun PestanaItems(
                         )
                     }
                     IconButton(onClick = { aEliminar = item }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Eliminar item")
+                        Icon(Icons.Filled.Delete, contentDescription = "Eliminar horizonte")
                     }
                 }
             }
@@ -451,7 +428,7 @@ private fun PestanaItems(
     aEliminar?.let { item ->
         AlertDialog(
             onDismissRequest = { aEliminar = null },
-            title = { Text("Eliminar item") },
+            title = { Text("Eliminar horizonte") },
             text = { Text("¿Eliminar \"${item.titulo.ifBlank { "sin título" }}\" y sus ${item.fotos.size} foto(s)?") },
             confirmButton = {
                 TextButton(onClick = {

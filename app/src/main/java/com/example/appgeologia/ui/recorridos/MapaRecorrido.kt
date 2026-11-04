@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
+import android.view.MotionEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -75,6 +76,16 @@ fun MapaRecorrido(
         MapView(context).apply {
             setTileSource(MOSAICOS_OSM)
             setMultiTouchControls(true)
+            // El mapa está dentro de una pantalla con scroll: mientras se toca el mapa,
+            // se le pide a la pantalla que no robe el gesto (así se puede mover el mapa).
+            setOnTouchListener { vista, evento ->
+                when (evento.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> vista.parent?.requestDisallowInterceptTouchEvent(true)
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL ->
+                        vista.parent?.requestDisallowInterceptTouchEvent(false)
+                }
+                false
+            }
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.SHOW_AND_FADEOUT)
             controller.setZoom(13.0)
             controller.setCenter(CENTRO_POR_DEFECTO)

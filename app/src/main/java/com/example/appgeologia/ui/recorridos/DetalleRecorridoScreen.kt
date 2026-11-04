@@ -1,5 +1,14 @@
 package com.example.appgeologia.ui.recorridos
 
+import com.example.appgeologia.ui.componentes.SeccionDesplegable
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -74,6 +83,8 @@ fun DetalleRecorridoScreen(
     var dialogoNuevaParada by rememberSaveable { mutableStateOf(false) }
     var confirmarEliminar by rememberSaveable { mutableStateOf(false) }
     var exportar by rememberSaveable { mutableStateOf(false) }
+    var paradasAbiertas by rememberSaveable { mutableStateOf(true) }
+    var mapaAbierto by rememberSaveable { mutableStateOf(true) }
     // Coordenada elegida manteniendo presionado el mapa, pendiente de confirmar.
     var puntoMapa by remember { mutableStateOf<Pair<Double, Double>?>(null) }
 
@@ -98,15 +109,7 @@ fun DetalleRecorridoScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text(recorrido.nombre)
-                        Text(
-                            "${recorrido.tipoSalida.nombre} · ${if (recorrido.finalizado) "Finalizado" else "En curso"}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                },
+                title = { Text(recorrido.nombre, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 navigationIcon = {
                     IconButton(onClick = onVolver) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
@@ -114,21 +117,21 @@ fun DetalleRecorridoScreen(
                 },
                 actions = {
                     IconButton(onClick = { exportar = true }, enabled = recorrido.paradas.isNotEmpty()) {
-                        Icon(Icons.Filled.Share, contentDescription = "Exportar recorrido en PDF")
+                        Icon(Icons.Filled.Share, contentDescription = "Exportar salida en PDF")
                     }
                     IconButton(onClick = { menuAbierto = true }) {
                         Icon(Icons.Filled.MoreVert, contentDescription = "Más opciones")
                     }
                     DropdownMenu(expanded = menuAbierto, onDismissRequest = { menuAbierto = false }) {
                         DropdownMenuItem(
-                            text = { Text(if (recorrido.finalizado) "Reabrir recorrido" else "Finalizar recorrido") },
+                            text = { Text(if (recorrido.finalizado) "Reabrir salida" else "Finalizar salida") },
                             onClick = {
                                 menuAbierto = false
                                 viewModel.cambiarEstado(recorrido.id, !recorrido.finalizado)
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Eliminar recorrido") },
+                            text = { Text("Eliminar salida") },
                             onClick = {
                                 menuAbierto = false
                                 confirmarEliminar = true
@@ -155,31 +158,63 @@ fun DetalleRecorridoScreen(
         },
         snackbarHost = { SnackbarHost(snackbar) }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            MapaRecorrido(
-                paradas = recorrido.paradas,
-                onParadaClick = { onAbrirParada(it.id) },
-                onMantenerPresionado = { lat, lon ->
-                    if (!recorrido.finalizado) puntoMapa = lat to lon
-                },
-                modifier = Modifier.fillMaxWidth().height(280.dp)
-            )
-            Text(
-                if (recorrido.finalizado) "Recorrido finalizado. Reabrilo desde el menú para agregar paradas."
-                else "Mantené presionado el mapa para crear una parada en ese punto.",
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-            )
-            LazyColumn(
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // ----- 1. Información básica (siempre visible, al principio) -----
+            InfoSalida(recorrido)
+
+            // ----- 2. Paradas (desplegable) -----
+            SeccionDesplegable(
+                titulo = "Paradas (${recorrido.paradas.size})",
+                abierta = paradasAbiertas,
+                onCambiar = { paradasAbiertas = it },
+                icono = Icons.AutoMirrored.Filled.List
             ) {
-                if (recorrido.paradas.isEmpty()) {
-                    item { Text("Todavía no hay paradas en este recorrido.") }
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (recorrido.paradas.isEmpty()) {
+                        Text(
+                            "Todavía no hay paradas en esta salida.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(4.dp)
+                        )
+                    }
+                    recorrido.paradas.sortedBy { it.numero }.forEach { parada ->
+                        TarjetaParada(parada, onClick = { onAbrirParada(parada.id) })
+                    }
                 }
-                items(recorrido.paradas.sortedBy { it.numero }, key = { it.id }) { parada ->
-                    TarjetaParada(parada, onClick = { onAbrirParada(parada.id) })
-                }
+            }
+
+            // ----- 3. Mapa (desplegable) -----
+            SeccionDesplegable(
+                titulo = "Mapa",
+                abierta = mapaAbierto,
+                onCambiar = { mapaAbierto = it },
+                icono = Icons.Filled.Place,
+                detalle = "Cada parada se ve como un punto numerado"
+            ) {
+                MapaRecorrido(
+                    paradas = recorrido.paradas,
+                    onParadaClick = { onAbrirParada(it.id) },
+                    onMantenerPresionado = { lat, lon ->
+                        if (!recorrido.finalizado) puntoMapa = lat to lon
+                    },
+                    modifier = Modifier.fillMaxWidth().height(300.dp)
+                )
+                Text(
+                    if (recorrido.finalizado) "Salida finalizada. Reabrila desde el menú para agregar paradas."
+                    else "Mantené presionado el mapa para crear una parada en ese punto.",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(12.dp)
+                )
             }
         }
     }
@@ -245,8 +280,8 @@ fun DetalleRecorridoScreen(
     if (confirmarEliminar) {
         AlertDialog(
             onDismissRequest = { confirmarEliminar = false },
-            title = { Text("Eliminar recorrido") },
-            text = { Text("Se borrarán \"${recorrido.nombre}\" con sus ${recorrido.paradas.size} paradas, items y fotos. Esta acción no se puede deshacer.") },
+            title = { Text("Eliminar salida") },
+            text = { Text("Se borrarán \"${recorrido.nombre}\" con sus ${recorrido.paradas.size} paradas, horizontes y fotos. Esta acción no se puede deshacer.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmarEliminar = false
@@ -260,7 +295,7 @@ fun DetalleRecorridoScreen(
 
     if (exportar) {
         DialogoExportarPdf(
-            titulo = "Exportar recorrido",
+            titulo = "Exportar salida",
             generar = { context -> PlanillaPdf(context).generarRecorrido(recorrido) },
             onCerrar = { exportar = false }
         )
@@ -269,7 +304,10 @@ fun DetalleRecorridoScreen(
 
 @Composable
 private fun TarjetaParada(parada: Parada, onClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)
+    ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
                 "Parada ${parada.numero}" +
@@ -284,9 +322,55 @@ private fun TarjetaParada(parada: Parada, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodySmall
             )
             Text(
-                "${formatearFechaHora(parada.fecha)} · ${parada.items.size} item(s)",
+                "${formatearFechaHora(parada.fecha)} · ${parada.items.size} horizonte(s)",
                 style = MaterialTheme.typography.bodySmall
             )
         }
+    }
+}
+
+/** Datos básicos de la salida de campo, siempre visibles arriba de todo. */
+@Composable
+private fun InfoSalida(recorrido: Recorrido) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "Información de la salida",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            DatoSalida("Tipo de salida", recorrido.tipoSalida.nombre)
+            DatoSalida("Fecha y hora de inicio", formatearFechaHora(recorrido.fechaInicio))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Estado", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(
+                    if (recorrido.finalizado) "Finalizada" else "En curso",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (recorrido.finalizado) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .background(
+                            if (recorrido.finalizado) MaterialTheme.colorScheme.surfaceVariant
+                            else MaterialTheme.colorScheme.primary,
+                            RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 10.dp, vertical = 2.dp)
+                )
+            }
+            DatoSalida("Cantidad de paradas", recorrido.paradas.size.toString())
+            if (recorrido.proyecto.isNotBlank()) DatoSalida("Proyecto", recorrido.proyecto)
+        }
+    }
+}
+
+@Composable
+private fun DatoSalida(etiqueta: String, valor: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(etiqueta, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(valor, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
     }
 }

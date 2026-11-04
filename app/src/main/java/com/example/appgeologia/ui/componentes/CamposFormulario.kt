@@ -48,12 +48,15 @@ fun CampoTexto(
     modifier: Modifier = Modifier,
     teclado: KeyboardType = KeyboardType.Text,
     lineas: Int = 1,
-    error: String? = null
+    error: String? = null,
+    /** Texto de ejemplo que se ve dentro del campo mientras está vacío. */
+    placeholder: String? = null
 ) {
     OutlinedTextField(
         value = valor,
         onValueChange = onCambio,
         label = { Text(etiqueta) },
+        placeholder = placeholder?.let { { Text(it) } },
         singleLine = lineas == 1,
         minLines = lineas,
         isError = error != null,

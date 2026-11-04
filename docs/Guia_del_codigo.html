@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>App Geología — Guía del código</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm 18mm 16mm; }
+  :root {
+    --tierra: #8B4A2B; --tierra-claro: #F6EDE6; --arena: #F3E1BD; --pizarra: #3F6273;
+    --texto: #2A211C; --gris: #6B625C; --borde: #E2D6CC; --codigo: #FBF7F3;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--texto); font-size: 10.5pt; line-height: 1.5; margin: 0; }
+  h1, h2, h3, h4 { color: var(--tierra); line-height: 1.25; margin: 0; }
+  h2 { font-size: 18pt; margin: 0 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--tierra); break-before: page; }
+  h3 { font-size: 12.5pt; margin: 18px 0 6px; }
+  h4 { font-size: 11pt; margin: 12px 0 4px; color: var(--pizarra); }
+  p { margin: 6px 0; }
+  ul, ol { margin: 6px 0; padding-left: 22px; }
+  li { margin: 2px 0; }
+  code { font-family: Consolas, "Courier New", monospace; font-size: 9.2pt; background: var(--codigo); border: 1px solid var(--borde); border-radius: 3px; padding: 0 3px; }
+  pre { font-family: Consolas, "Courier New", monospace; font-size: 8.8pt; line-height: 1.4; background: var(--codigo); border: 1px solid var(--borde); border-left: 4px solid var(--tierra); border-radius: 4px; padding: 8px 10px; margin: 8px 0; white-space: pre-wrap; break-inside: avoid; }
+  pre code { border: none; background: none; padding: 0; font-size: inherit; }
+  .c { color: #8A7F76; } /* comentario dentro de pre */
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 9.6pt; break-inside: auto; }
+  th { background: var(--tierra); color: #fff; text-align: left; padding: 5px 7px; font-weight: 600; }
+  td { border-bottom: 1px solid var(--borde); padding: 5px 7px; vertical-align: top; }
+  tr { break-inside: avoid; }
+  .nota { background: var(--arena); border-radius: 6px; padding: 8px 12px; margin: 10px 0; break-inside: avoid; }
+  .nota b:first-child { color: var(--tierra); }
+  .archivo { border: 1px solid var(--borde); border-radius: 8px; padding: 10px 14px; margin: 12px 0; break-inside: avoid-page; }
+  .archivo h3 { margin-top: 0; font-family: Consolas, monospace; font-size: 11.5pt; }
+  .ruta { color: var(--gris); font-size: 9pt; font-family: Consolas, monospace; }
+  .etiqueta { display: inline-block; background: var(--tierra-claro); color: var(--tierra); border-radius: 10px; padding: 0 8px; font-size: 8.5pt; font-weight: 600; margin-right: 4px; }
+
+  /* Portada */
+  .portada { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; }
+  .portada .banda { background: var(--tierra); color: #fff; border-radius: 10px; padding: 40px 36px; margin-top: 30mm; }
+  .portada h1 { color: #fff; font-size: 34pt; }
+  .portada .sub { font-size: 14pt; margin-top: 8px; opacity: .95; }
+  .portada .datos { color: var(--gris); font-size: 10pt; }
+  .indice { columns: 2; column-gap: 24px; font-size: 10.5pt; }
+  .indice li { break-inside: avoid; }
+
+  /* Diagramas */
+  .capas { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; break-inside: avoid; }
+  .capa { border-radius: 8px; padding: 8px 12px; display: flex; gap: 12px; align-items: center; }
+  .capa .nombre { font-weight: 700; min-width: 120px; }
+  .capa .cajas { display: flex; flex-wrap: wrap; gap: 6px; }
+  .capa .caja { background: #fff; border: 1px solid var(--borde); border-radius: 5px; padding: 2px 8px; font-family: Consolas, monospace; font-size: 8.8pt; }
+  .flecha { text-align: center; color: var(--tierra); font-size: 9pt; line-height: 1.2; }
+  .ui { background: #F3E1BD; } .vm { background: #FFDBCC; } .datos { background: #DCE8EC; } .serv { background: #E6EFD9; }
+  .flujo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0; break-inside: avoid; }
+  .flujo .paso { background: var(--tierra-claro); border: 1px solid var(--borde); border-radius: 6px; padding: 4px 8px; font-size: 9.2pt; }
+  .flujo .f { color: var(--tierra); font-weight: 700; }
+  .arbol { font-family: Consolas, monospace; font-size: 8.9pt; line-height: 1.45; background: var(--codigo); border: 1px solid var(--borde); border-radius: 6px; padding: 10px 12px; white-space: pre; break-inside: avoid; }
+  .arbol .d { color: var(--gris); }
+</style>
+</head>
+<body>
+
+<!-- =============================================================== PORTADA -->
+<section class="portada">
+  <div class="banda">
+    <h1>App Geología</h1>
+    <div class="sub">Guía del código para estudiar cómo funciona la app</div>
+    <div class="sub" style="font-size:11pt; margin-top:18px">Kotlin · Jetpack Compose · Material 3 · Navigation · osmdroid · PdfDocument</div>
+  </div>
+  <div>
+    <h3>Contenido</h3>
+    <ol class="indice">
+      <li>Por dónde empezar a leer</li>
+      <li>Qué hace la app y con qué está hecha</li>
+      <li>Arquitectura: cómo se conectan las piezas</li>
+      <li>Estructura de carpetas</li>
+      <li>Conceptos de Compose que vas a ver en el código</li>
+      <li>Los datos: modelos y repositorio</li>
+      <li>Navegación y pantallas</li>
+      <li>Mapa, GPS y fotos</li>
+      <li>Generación del PDF</li>
+      <li>Flujos completos paso a paso</li>
+      <li>Archivos en el teléfono, permisos y Gradle</li>
+      <li>Pruebas</li>
+      <li>Receta: agregar un campo nuevo a la planilla</li>
+      <li>Ejercicios para practicar y glosario</li>
+    </ol>
+    <p class="datos" style="margin-top:20px">Proyecto: <code>D:\Apps Android Studio\App-Geolog-a</code> — Paquete: <code>com.example.appgeologia</code><br>
+    Todas las rutas de esta guía son relativas a <code>app/src/main/java/com/example/appgeologia/</code> salvo que se indique otra cosa.</p>
+  </div>
+</section>
+
+<!-- =============================================================== 1 -->
+<h2>1. Por dónde empezar a leer</h2>
+<p>El código está comentado: cada archivo empieza con un comentario que explica para qué sirve, y las funciones importantes tienen su propia explicación (los comentarios <code>/** ... */</code> se llaman <b>KDoc</b>; Android Studio los muestra si pasás el mouse sobre el nombre de la función).</p>
+<p>Este es el <b>orden de lectura recomendado</b>. Va de lo más simple (los datos) a lo más complejo (la interfaz y el PDF), siguiendo el camino que hace la información:</p>
+
+<table>
+  <tr><th>#</th><th>Archivo</th><th>Qué vas a aprender</th></tr>
+  <tr><td>1</td><td><code>MainActivity.kt</code></td><td>El punto de entrada: dónde arranca la app.</td></tr>
+  <tr><td>2</td><td><code>data/recorrido/Modelos.kt</code></td><td>Cómo se representan recorridos, paradas e items.</td></tr>
+  <tr><td>3</td><td><code>data/recorrido/OpcionesSuelo.kt</code></td><td>Las opciones fijas de la planilla (MA, NoEf…).</td></tr>
+  <tr><td>4</td><td><code>data/recorrido/RecorridoRepository.kt</code></td><td>Cómo se guardan y modifican los datos (JSON + StateFlow).</td></tr>
+  <tr><td>5</td><td><code>ui/recorridos/RecorridosViewModel.kt</code></td><td>El puente entre las pantallas y los datos.</td></tr>
+  <tr><td>6</td><td><code>ui/Navegacion.kt</code></td><td>Qué pantallas hay y cómo se pasa de una a otra.</td></tr>
+  <tr><td>7</td><td><code>ui/inicio/InicioScreen.kt</code></td><td>Una pantalla Compose completa y fácil de seguir.</td></tr>
+  <tr><td>8</td><td><code>ui/componentes/CamposFormulario.kt</code></td><td>Componentes reutilizables de formulario.</td></tr>
+  <tr><td>9</td><td><code>ui/recorridos/ListaRecorridosScreen.kt</code><br><code>ui/recorridos/DetalleRecorridoScreen.kt</code></td><td>Listas, diálogos y cómo se crea una parada.</td></tr>
+  <tr><td>10</td><td><code>ui/recorridos/EditarParadaScreen.kt</code></td><td>Formularios con autoguardado y pestañas.</td></tr>
+  <tr><td>11</td><td><code>ui/recorridos/EditarItemScreen.kt</code></td><td>Cámara, galería y la planilla desplegable.</td></tr>
+  <tr><td>12</td><td><code>ubicacion/Ubicacion.kt</code>, <code>ui/recorridos/MapaRecorrido.kt</code></td><td>GPS, permisos y el mapa.</td></tr>
+  <tr><td>13</td><td><code>archivos/AlmacenFotos.kt</code>, <code>archivos/AlmacenExportaciones.kt</code></td><td>Manejo de archivos: fotos y PDFs.</td></tr>
+  <tr><td>14</td><td><code>pdf/PlanillaPdf.kt</code></td><td>Cómo se dibuja el PDF (el archivo más largo).</td></tr>
+  <tr><td>15</td><td><code>app/src/test/…/RecorridoRepositoryTest.kt</code></td><td>Cómo se prueba el código automáticamente.</td></tr>
+</table>
+
+<div class="nota"><b>Consejo:</b> leé con Android Studio abierto. <b>Ctrl + clic</b> sobre cualquier nombre te lleva a donde está definido, y <b>Alt + F7</b> te muestra dónde se usa. Así podés seguir el camino de un dato de una pantalla hasta el archivo JSON.</div>
+
+<!-- =============================================================== 2 -->
+<h2>2. Qué hace la app y con qué está hecha</h2>
+<h3>Funcionalidad</h3>
+<ul>
+  <li><b>Recorrido</b>: una salida de campo. Tiene nombre, tipo de salida (por ahora "Suelos"), proyecto, descripción y estado (en curso / finalizado).</li>
+  <li><b>Parada</b>: un punto del recorrido. Guarda la hora, la posición (GPS, a mano o tocando el mapa) y los datos generales del sitio (calicata, geomorfología, vegetación…).</li>
+  <li><b>Item</b>: una observación dentro de la parada: título, descripción, fotos y, opcionalmente, los datos de la planilla de suelos (lo que en papel es una columna de la tabla).</li>
+  <li><b>Exportación</b>: un PDF de la parada o del recorrido completo, con el formato de la planilla en papel y una ficha por item con sus fotos. Quedan guardados en "Mis exportaciones".</li>
+</ul>
+<h3>Tecnologías</h3>
+<table>
+  <tr><th>Tecnología</th><th>Para qué se usa</th></tr>
+  <tr><td><b>Kotlin</b></td><td>El lenguaje de toda la app.</td></tr>
+  <tr><td><b>Jetpack Compose</b></td><td>La interfaz. Las pantallas se escriben como funciones Kotlin (<code>@Composable</code>), sin XML.</td></tr>
+  <tr><td><b>Material 3</b></td><td>Los componentes visuales: botones, tarjetas, barras, diálogos, chips.</td></tr>
+  <tr><td><b>Navigation Compose</b></td><td>Pasar de una pantalla a otra y manejar el botón "atrás".</td></tr>
+  <tr><td><b>ViewModel</b> + <b>StateFlow</b></td><td>Mantener los datos vivos aunque se gire la pantalla, y avisar a la interfaz cuando cambian.</td></tr>
+  <tr><td><b>kotlinx.serialization</b></td><td>Convertir los objetos Kotlin a JSON y viceversa (para guardarlos y para las rutas de navegación).</td></tr>
+  <tr><td><b>osmdroid</b></td><td>El mapa de OpenStreetMap (no necesita clave de API).</td></tr>
+  <tr><td><b>LocationManager</b> (Android)</td><td>Obtener la posición GPS.</td></tr>
+  <tr><td><b>PdfDocument</b> (Android)</td><td>Dibujar el PDF página por página, como en un lienzo.</td></tr>
+  <tr><td><b>FileProvider</b> (AndroidX)</td><td>Compartir archivos (PDF, foto de la cámara) con otras apps de forma segura.</td></tr>
+</table>
+
+<!-- =============================================================== 3 -->
+<h2>3. Arquitectura: cómo se conectan las piezas</h2>
+<p>La app está organizada en <b>capas</b>. Cada capa solo habla con la de abajo; así, por ejemplo, las pantallas no saben que los datos se guardan en un archivo JSON.</p>
+
+<div class="capas">
+  <div class="capa ui"><div class="nombre">Pantallas<br><small>(Compose)</small></div>
+    <div class="cajas"><span class="caja">InicioScreen</span><span class="caja">ListaRecorridosScreen</span><span class="caja">DetalleRecorridoScreen</span><span class="caja">EditarParadaScreen</span><span class="caja">EditarItemScreen</span><span class="caja">ExportacionesScreen</span></div></div>
+  <div class="flecha">▲ datos (StateFlow) &nbsp;&nbsp;&nbsp; ▼ acciones (llamadas a funciones)</div>
+  <div class="capa vm"><div class="nombre">ViewModel</div>
+    <div class="cajas"><span class="caja">RecorridosViewModel</span></div></div>
+  <div class="flecha">▲▼</div>
+  <div class="capa datos"><div class="nombre">Datos</div>
+    <div class="cajas"><span class="caja">RecorridoRepository</span><span class="caja">Modelos (Recorrido, Parada, ItemParada…)</span><span class="caja">recorridos.json</span></div></div>
+  <div class="capa serv"><div class="nombre">Servicios<br><small>(usados por pantallas y VM)</small></div>
+    <div class="cajas"><span class="caja">Ubicacion (GPS)</span><span class="caja">MapaRecorrido (osmdroid)</span><span class="caja">AlmacenFotos</span><span class="caja">AlmacenExportaciones</span><span class="caja">PlanillaPdf</span></div></div>
+</div>
+
+<h3>El flujo de datos es en una sola dirección</h3>
+<p>Este es el patrón más importante para entender la app (se llama <b>flujo unidireccional</b>):</p>
+<div class="flujo">
+  <span class="paso">El usuario toca o escribe</span><span class="f">→</span>
+  <span class="paso">La pantalla llama a una función del ViewModel</span><span class="f">→</span>
+  <span class="paso">El repositorio actualiza la lista en memoria</span><span class="f">→</span>
+  <span class="paso">El StateFlow emite la lista nueva</span><span class="f">→</span>
+  <span class="paso">Compose redibuja las pantallas que la usan</span>
+</div>
+<p>En paralelo, el repositorio escribe el JSON en segundo plano. Las pantallas <b>nunca</b> modifican los datos directamente: siempre piden el cambio y esperan a que les llegue el estado nuevo.</p>
+
+<pre><code><span class="c">// Navegacion.kt — la interfaz "escucha" la lista de recorridos</span>
+val recorridos by viewModel.recorridos.collectAsStateWithLifecycle()
+
+<span class="c">// ListaRecorridosScreen — al crear, se llama al ViewModel (no se toca la lista)</span>
+onCrearRecorrido = { nombre, tipo, proyecto, descripcion ->
+    val id = viewModel.crearRecorrido(nombre, tipo, proyecto, descripcion)
+    navController.navigate(RutaRecorrido(id))
+}</code></pre>
+
+<h3>¿Por qué un ViewModel?</h3>
+<p>Cuando girás el teléfono, Android destruye y vuelve a crear la pantalla (la <code>Activity</code>). Todo lo que estaba en variables comunes se pierde. El <b>ViewModel</b> sobrevive a ese proceso, por eso los datos viven ahí y no en las pantallas.</p>
+
+<!-- =============================================================== 4 -->
+<h2>4. Estructura de carpetas</h2>
+<div class="arbol">app/
+├── build.gradle.kts                 <span class="d">dependencias y configuración del módulo</span>
+└── src/
+    ├── main/
+    │   ├── AndroidManifest.xml      <span class="d">permisos, Activity, FileProvider</span>
+    │   ├── res/xml/file_paths.xml   <span class="d">carpetas que se pueden compartir</span>
+    │   └── java/com/example/appgeologia/
+    │       ├── MainActivity.kt      <span class="d">punto de entrada</span>
+    │       ├── data/recorrido/
+    │       │   ├── Modelos.kt               <span class="d">Recorrido, Parada, DatosSitio, ItemParada</span>
+    │       │   ├── OpcionesSuelo.kt         <span class="d">opciones fijas y sugerencias de la planilla</span>
+    │       │   └── RecorridoRepository.kt   <span class="d">guardar/leer el JSON, modificar datos</span>
+    │       ├── archivos/
+    │       │   ├── AlmacenFotos.kt          <span class="d">importar, enderezar y achicar fotos</span>
+    │       │   └── AlmacenExportaciones.kt  <span class="d">carpeta de PDFs, ver y compartir</span>
+    │       ├── ubicacion/Ubicacion.kt       <span class="d">permisos y lectura del GPS</span>
+    │       ├── pdf/
+    │       │   ├── PlanillaPdf.kt           <span class="d">dibuja la planilla y las fichas</span>
+    │       │   └── DialogoExportarPdf.kt    <span class="d">diálogo Ver / Compartir / Guardar</span>
+    │       └── ui/
+    │           ├── Navegacion.kt            <span class="d">rutas, NavHost y menú inferior</span>
+    │           ├── inicio/InicioScreen.kt
+    │           ├── exportaciones/ExportacionesScreen.kt
+    │           ├── recorridos/
+    │           │   ├── RecorridosViewModel.kt
+    │           │   ├── ListaRecorridosScreen.kt
+    │           │   ├── DetalleRecorridoScreen.kt
+    │           │   ├── MapaRecorrido.kt
+    │           │   ├── EditarParadaScreen.kt
+    │           │   └── EditarItemScreen.kt
+    │           ├── componentes/
+    │           │   ├── CamposFormulario.kt  <span class="d">campos de texto, selectores, fechas</span>
+    │           │   └── Fotos.kt             <span class="d">miniaturas y visor de fotos</span>
+    │           └── theme/                   <span class="d">colores, tipografía y tema</span>
+    ├── test/…/RecorridoRepositoryTest.kt    <span class="d">pruebas en la PC</span>
+    └── androidTest/…/PlanillaPdfTest.kt     <span class="d">pruebas en el teléfono/emulador</span>
+
+gradle/libs.versions.toml            <span class="d">versiones de todas las librerías</span>
+docs/                                <span class="d">esta guía</span></div>
+
+<!-- =============================================================== 5 -->
+<h2>5. Conceptos de Compose que vas a ver en el código</h2>
+
+<h3>Funciones <code>@Composable</code></h3>
+<p>Una pantalla o un pedazo de pantalla es una función marcada con <code>@Composable</code>. No devuelve nada: <i>describe</i> lo que se ve. Compose la vuelve a ejecutar (<b>recomposición</b>) cada vez que cambia un dato que lee.</p>
+<pre><code><span class="c">// ui/inicio/InicioScreen.kt</span>
+@Composable
+private fun Contador(titulo: String, valor: Int, modifier: Modifier = Modifier) {
+    Card(modifier = modifier) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(valor.toString(), style = MaterialTheme.typography.headlineMedium)
+            Text(titulo, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}</code></pre>
+
+<h3>Estado: <code>remember</code>, <code>mutableStateOf</code> y <code>rememberSaveable</code></h3>
+<table>
+  <tr><th>Herramienta</th><th>Qué hace</th><th>Ejemplo en la app</th></tr>
+  <tr><td><code>mutableStateOf(x)</code></td><td>Una variable que, al cambiar, provoca que se redibuje lo que la usa.</td><td>El texto de un campo, si un diálogo está abierto.</td></tr>
+  <tr><td><code>remember { }</code></td><td>Conserva el valor entre recomposiciones (si no, se reiniciaría cada vez).</td><td><code>var parada by remember { mutableStateOf(paradaGuardada) }</code></td></tr>
+  <tr><td><code>rememberSaveable { }</code></td><td>Igual, pero además sobrevive a girar la pantalla.</td><td>La pestaña elegida, si el diálogo "Nuevo recorrido" está abierto.</td></tr>
+</table>
+
+<h3><code>Modifier</code></h3>
+<p>Es la forma de decirle a un componente su tamaño, márgenes, fondo o qué hacer al tocarlo. Se encadena y <b>el orden importa</b>:</p>
+<pre><code>Modifier.fillMaxWidth().padding(16.dp).clickable { onAbrir(item.id) }</code></pre>
+
+<h3><code>Scaffold</code></h3>
+<p>La estructura de cada pantalla: barra superior (<code>topBar</code>), botón flotante (<code>floatingActionButton</code>), menú inferior (<code>bottomBar</code>) y mensajes (<code>snackbarHost</code>). El contenido recibe un <code>innerPadding</code> para no quedar tapado por las barras.</p>
+
+<h3>Efectos: <code>LaunchedEffect</code> y <code>DisposableEffect</code></h3>
+<p>Sirven para ejecutar código "por fuera" del dibujo. La app los usa para el <b>autoguardado</b>:</p>
+<pre><code><span class="c">// ui/recorridos/EditarItemScreen.kt</span>
+LaunchedEffect(item) {      <span class="c">// se reinicia cada vez que cambia "item"</span>
+    delay(500)              <span class="c">// si en medio segundo hay otro cambio, se cancela y empieza de nuevo</span>
+    onGuardar(item)         <span class="c">// → se guarda 0,5 s después de dejar de escribir</span>
+}
+DisposableEffect(Unit) { onDispose { onGuardar(actual) } }  <span class="c">// y al salir de la pantalla</span></code></pre>
+
+<h3>Abrir otras apps y pedir permisos: <code>rememberLauncherForActivityResult</code></h3>
+<p>Para abrir la cámara, la galería, el selector de "Guardar como" o pedir permisos, Android usa <b>contratos</b>. Se registra un "lanzador" con lo que hay que hacer cuando vuelve el resultado, y después se llama a <code>launch()</code>:</p>
+<pre><code><span class="c">// ui/recorridos/EditarItemScreen.kt</span>
+val lanzadorCamara = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+    if (ok) importarFotos { listOf(almacenFotos.importarArchivo(temporal)) }
+}
+lanzadorCamara.launch(uri)   <span class="c">// abre la cámara; la foto se escribe en "uri"</span></code></pre>
+<table>
+  <tr><th>Contrato</th><th>Dónde</th><th>Para qué</th></tr>
+  <tr><td><code>RequestMultiplePermissions</code></td><td><code>Ubicacion.kt</code></td><td>Pedir permiso de ubicación.</td></tr>
+  <tr><td><code>TakePicture</code></td><td><code>EditarItemScreen.kt</code></td><td>Sacar una foto con la cámara.</td></tr>
+  <tr><td><code>PickMultipleVisualMedia</code></td><td><code>EditarItemScreen.kt</code></td><td>Elegir fotos de la galería o los archivos.</td></tr>
+  <tr><td><code>CreateDocument</code></td><td><code>DialogoExportarPdf.kt</code></td><td>"Guardar copia en el teléfono".</td></tr>
+</table>
+
+<h3><code>AndroidView</code></h3>
+<p>Permite meter una vista "clásica" de Android dentro de Compose. Se usa para el mapa de osmdroid, que no está hecho en Compose (ver capítulo 8).</p>
+
+<!-- =============================================================== 6 -->
+<h2>6. Los datos: modelos y repositorio</h2>
+
+<div class="archivo">
+<h3>Modelos.kt</h3><div class="ruta">data/recorrido/Modelos.kt</div>
+<p>Define la forma de los datos con <b>data classes</b> (clases que solo guardan datos; Kotlin les genera <code>copy()</code>, <code>equals()</code>, etc.). Todas tienen <code>@Serializable</code> para poder convertirse a JSON.</p>
+<div class="flujo">
+  <span class="paso"><b>Recorrido</b><br>id, nombre, tipoSalida, proyecto, finalizado…</span><span class="f">contiene →</span>
+  <span class="paso"><b>Parada</b> (lista)<br>fecha, latitud, longitud, altitud, observaciones</span><span class="f">contiene →</span>
+  <span class="paso"><b>DatosSitio</b><br>calicata, geomorfología, relieve…</span>
+  <span class="paso"><b>ItemParada</b> (lista)<br>título, descripción, fotos + campos de suelo</span>
+</div>
+<h4>Detalles a observar</h4>
+<ul>
+  <li><b>Todo es inmutable</b> (<code>val</code>). Para cambiar algo se crea una copia: <code>item.copy(titulo = "Nuevo")</code>. Esto hace que Compose detecte los cambios con seguridad.</li>
+  <li><b>Valores por defecto</b> en casi todos los campos: si mañana se agrega un campo nuevo, los JSON viejos se siguen pudiendo leer.</li>
+  <li><b>Migración</b>: en la primera versión los items se llamaban "horizontes". <code>@JsonNames</code> permite leer ambos nombres:
+<pre><code>@JsonNames("horizontes") val items: List&lt;ItemParada&gt; = emptyList(),</code></pre></li>
+  <li><code>tieneDatosSuelo()</code> decide si un item va como columna en la tabla del PDF. El truco: borra los campos que no son de suelo y compara contra un item vacío.
+<pre><code>fun ItemParada.tieneDatosSuelo(): Boolean =
+    copy(id = 0, titulo = "", descripcion = "", fotos = emptyList(), fecha = 0) != ItemParada(id = 0)</code></pre></li>
+  <li>Las <b>fotos</b> se guardan como nombres de archivo (<code>List&lt;String&gt;</code>), no como imágenes: las imágenes están en una carpeta aparte.</li>
+</ul>
+</div>
+
+<div class="archivo">
+<h3>OpcionesSuelo.kt</h3><div class="ruta">data/recorrido/OpcionesSuelo.kt</div>
+<p>Las opciones fijas de la planilla. Cada <code>Opcion</code> tiene un <b>código</b> (lo que se imprime: <code>"MA"</code>) y una <b>descripción</b> (lo que se lee en la app: "Muy abrupto"). En los datos se guarda solo el código.</p>
+<p><code>GrupoOpciones</code> agrupa las opciones en <b>líneas</b>: casi todas van en una línea, pero adhesividad y plasticidad ocupan dos, igual que en la planilla en papel. El PDF usa esas líneas para dibujarlas.</p>
+<p>También tiene listas de <b>sugerencias</b> para campos de texto libre (texturas, tipos de estructura…). Si la cátedra quiere cambiar opciones o sugerencias, este es el único archivo que hay que tocar.</p>
+</div>
+
+<div class="archivo">
+<h3>RecorridoRepository.kt</h3><div class="ruta">data/recorrido/RecorridoRepository.kt</div>
+<p>Es el <b>único lugar</b> que modifica los datos y el único que lee y escribe el archivo <code>recorridos.json</code>.</p>
+<h4>Cómo funciona</h4>
+<ol>
+  <li>Al crearse, lee el JSON y lo carga en un <code>MutableStateFlow</code> (una "caja" observable con la lista de recorridos).</li>
+  <li>Expone esa caja como <code>recorridos: StateFlow</code> de solo lectura. Las pantallas la observan.</li>
+  <li>Todas las modificaciones pasan por <code>modificar()</code>: aplica el cambio en memoria (la pantalla se actualiza al instante) y lanza la escritura del archivo en segundo plano.</li>
+</ol>
+<pre><code>private fun modificar(cambio: (List&lt;Recorrido&gt;) -&gt; List&lt;Recorrido&gt;) {
+    _recorridos.update(cambio)          <span class="c">// 1) memoria → la interfaz se redibuja</span>
+    scope.launch { escribirArchivo() }  <span class="c">// 2) disco, en otro hilo</span>
+}</code></pre>
+<p>Las funciones públicas (<code>crearParada</code>, <code>guardarItem</code>, <code>eliminarItem</code>…) se construyen encima de dos ayudantes: <code>modificarRecorrido(id)</code> y <code>modificarParada(recorridoId, paradaId)</code>, que buscan el elemento y reemplazan solo ese.</p>
+<h4>Detalles de robustez (pensados para el trabajo de campo)</h4>
+<ul>
+  <li><b>Escritura atómica</b>: se escribe en <code>recorridos.json.tmp</code> y después se renombra. Si el teléfono se apaga a mitad de camino, el archivo original queda sano.</li>
+  <li><b>Archivo dañado</b>: si el JSON no se puede leer, se guarda una copia <code>.danado</code> antes de empezar de cero, para poder recuperar los datos.</li>
+  <li><b>Ids únicos</b>: <code>nuevoId()</code> usa la hora en milisegundos, pero nunca repite aunque se creen dos cosas en el mismo milisegundo.</li>
+  <li><code>guardarParada()</code> <b>no pisa los items</b>: conserva los items que ya estaban guardados. Así, si la pantalla de la parada y la del item guardan casi al mismo tiempo, no se pierden cambios.</li>
+  <li>El <code>Mutex</code> evita que dos escrituras del archivo se mezclen.</li>
+</ul>
+</div>
+
+<div class="archivo">
+<h3>RecorridosViewModel.kt</h3><div class="ruta">ui/recorridos/RecorridosViewModel.kt</div>
+<p>Es casi un "pasamanos" hacia el repositorio, más dos responsabilidades propias:</p>
+<ul>
+  <li>Cuando se elimina un item, parada o recorrido, <b>borra también sus fotos</b> del almacenamiento.</li>
+  <li>Al arrancar, borra las <b>fotos sueltas</b> que no pertenezcan a ningún item (<code>eliminarNoUsadas</code>), por ejemplo si se quitó una foto de un item.</li>
+</ul>
+<p>Es un <code>AndroidViewModel</code> porque necesita el <code>Application</code> para saber dónde está la carpeta de archivos de la app (<code>filesDir</code>). Hay <b>uno solo</b> para toda la app; se crea en <code>Navegacion.kt</code> con <code>viewModel()</code> y se pasa a las pantallas.</p>
+</div>
+
+<!-- =============================================================== 7 -->
+<h2>7. Navegación y pantallas</h2>
+
+<div class="archivo">
+<h3>MainActivity.kt</h3>
+<p>La única <code>Activity</code> de la app. Solo activa el modo "borde a borde" y muestra <code>AppGeologia()</code> dentro del tema. Toda la app vive dentro de Compose.</p>
+</div>
+
+<div class="archivo">
+<h3>Navegacion.kt</h3><div class="ruta">ui/Navegacion.kt</div>
+<p>Cada pantalla tiene una <b>ruta</b>: un objeto o data class <code>@Serializable</code>. Los parámetros de la ruta son los ids de lo que hay que mostrar.</p>
+<pre><code>@Serializable object RutaInicio
+@Serializable object RutaRecorridos
+@Serializable object RutaExportaciones
+@Serializable data class RutaRecorrido(val recorridoId: Long)
+@Serializable data class RutaParada(val recorridoId: Long, val paradaId: Long)
+@Serializable data class RutaItem(val recorridoId: Long, val paradaId: Long, val itemId: Long)</code></pre>
+<p>El <code>NavHost</code> asocia cada ruta con su pantalla. Para ir a otra pantalla: <code>navController.navigate(RutaParada(r, p))</code>; para volver: <code>navController.popBackStack()</code>.</p>
+<ul>
+  <li>Las rutas solo llevan <b>ids</b>, nunca objetos completos. La pantalla busca el dato actual en la lista del ViewModel. Si ya no existe (por ejemplo, se borró), <code>VolverSiNoExiste</code> vuelve atrás.</li>
+  <li><code>irAPestana()</code> cambia de pestaña del menú inferior <b>conservando el estado</b> de cada una (<code>saveState</code> / <code>restoreState</code>).</li>
+  <li>El menú inferior (<code>BarraInferior</code>) solo aparece en las tres pantallas principales: Inicio, Recorridos y Mis exportaciones.</li>
+</ul>
+<table>
+  <tr><th>Ruta</th><th>Pantalla</th><th>Archivo</th></tr>
+  <tr><td><code>RutaInicio</code></td><td>Bienvenida y accesos</td><td><code>ui/inicio/InicioScreen.kt</code></td></tr>
+  <tr><td><code>RutaRecorridos</code></td><td>Lista de recorridos</td><td><code>ui/recorridos/ListaRecorridosScreen.kt</code></td></tr>
+  <tr><td><code>RutaExportaciones</code></td><td>Historial de PDFs</td><td><code>ui/exportaciones/ExportacionesScreen.kt</code></td></tr>
+  <tr><td><code>RutaRecorrido</code></td><td>Mapa y paradas</td><td><code>ui/recorridos/DetalleRecorridoScreen.kt</code></td></tr>
+  <tr><td><code>RutaParada</code></td><td>Items, ubicación y sitio</td><td><code>ui/recorridos/EditarParadaScreen.kt</code></td></tr>
+  <tr><td><code>RutaItem</code></td><td>Formulario del item</td><td><code>ui/recorridos/EditarItemScreen.kt</code></td></tr>
+</table>
+</div>
+
+<div class="archivo">
+<h3>InicioScreen.kt</h3><div class="ruta">ui/inicio/InicioScreen.kt</div>
+<p>Buen primer ejemplo de pantalla. Calcula los contadores a partir de la lista de recorridos (<code>sumOf</code>), muestra el "recorrido en curso" (el más reciente sin finalizar) y abre diálogos según variables <code>rememberSaveable</code>. La <b>Guía de la planilla</b> se genera leyendo <code>OpcionesSuelo</code>, así que si cambian las opciones, la guía se actualiza sola.</p>
+</div>
+
+<div class="archivo">
+<h3>ListaRecorridosScreen.kt</h3><div class="ruta">ui/recorridos/ListaRecorridosScreen.kt</div>
+<p>Muestra los recorridos con <code>LazyColumn</code> (una lista que solo dibuja lo visible). <code>DialogoNuevoRecorrido</code> es público porque también lo usa la pantalla de Inicio.</p>
+</div>
+
+<div class="archivo">
+<h3>DetalleRecorridoScreen.kt</h3><div class="ruta">ui/recorridos/DetalleRecorridoScreen.kt</div>
+<p>Mapa arriba, lista de paradas abajo. Las <b>tres formas de crear una parada</b> terminan en la misma función, <code>crearYAbrir()</code>:</p>
+<ul>
+  <li><b>GPS</b>: <code>rememberSolicitudUbicacion</code> pide permiso, busca la posición y devuelve un <code>ResultadoUbicacion</code> (<code>Exito</code>, <code>SinPermiso</code> o <code>NoDisponible</code>).</li>
+  <li><b>A mano</b>: crea la parada sin coordenadas y abre el editor.</li>
+  <li><b>Mantener presionado el mapa</b>: <code>MapaRecorrido</code> avisa con <code>onMantenerPresionado(lat, lon)</code> y se pide confirmación.</li>
+</ul>
+<p>El menú ⋮ permite finalizar o reabrir el recorrido y eliminarlo; el ícono de compartir exporta el recorrido completo.</p>
+</div>
+
+<div class="archivo">
+<h3>EditarParadaScreen.kt</h3><div class="ruta">ui/recorridos/EditarParadaScreen.kt</div>
+<ul>
+  <li><b>Estado local + autoguardado</b>: la pantalla edita una copia local (<code>var parada by remember</code>) y la guarda medio segundo después de cada cambio y al salir. Trabajar con una copia local evita problemas con el cursor al escribir rápido.</li>
+  <li><b>Los items no se editan acá</b>: la lista de items se lee de <code>paradaGuardada</code> (lo que está en el repositorio), y agregar o eliminar items se pide directamente al ViewModel.</li>
+  <li><b>Coordenadas como texto</b>: latitud, longitud y altitud se editan como <code>String</code> y se convierten a número con <code>parsearCoordenada()</code>, que acepta coma o punto y valida el rango (±90 / ±180).</li>
+  <li><code>ResumenParada</code> muestra siempre la hora y la posición; las pestañas son "Items" y "Ubicación y sitio".</li>
+</ul>
+</div>
+
+<div class="archivo">
+<h3>EditarItemScreen.kt</h3><div class="ruta">ui/recorridos/EditarItemScreen.kt</div>
+<ul>
+  <li>Mismo patrón de estado local + autoguardado que la parada.</li>
+  <li><b>Cámara</b>: <code>AlmacenFotos.nuevoArchivoCamara()</code> crea un archivo temporal y su <code>Uri</code>; la cámara escribe ahí. La ruta se guarda con <code>rememberSaveable</code> porque Android puede cerrar la app mientras la cámara está abierta.</li>
+  <li><b>Galería</b>: <code>PickMultipleVisualMedia</code> devuelve hasta 10 <code>Uri</code>; cada una se importa con <code>importarUri()</code>.</li>
+  <li><code>importarFotos()</code> procesa las fotos en otro hilo (<code>Dispatchers.IO</code>) y muestra un indicador de carga mientras tanto (<code>procesando</code>).</li>
+  <li><code>CamposSuelo</code> contiene todos los campos de la planilla; se muestra u oculta con <code>mostrarSuelo</code>, que arranca abierto si el item ya tiene datos de suelo.</li>
+</ul>
+</div>
+
+<div class="archivo">
+<h3>ExportacionesScreen.kt y componentes</h3><div class="ruta">ui/exportaciones/ · ui/componentes/</div>
+<p><code>ExportacionesScreen</code> lista los PDFs de la carpeta de exportaciones (los vuelve a leer cada vez que se entra) y permite verlos, compartirlos o borrarlos.</p>
+<p><code>CamposFormulario.kt</code> tiene los bloques que se repiten en los formularios: <code>CampoTexto</code>, <code>SelectorOpciones</code> (chips; tocar la opción elegida la desmarca), <code>CampoConSugerencias</code>, <code>TituloSeccion</code> y funciones para formatear fechas y coordenadas. <code>Fotos.kt</code> tiene <code>MiniaturaFoto</code> y <code>VisorFoto</code>; ambas cargan la imagen achicada en segundo plano con <code>produceState</code>.</p>
+</div>
+
+<!-- =============================================================== 8 -->
+<h2>8. Mapa, GPS y fotos</h2>
+
+<div class="archivo">
+<h3>MapaRecorrido.kt</h3><div class="ruta">ui/recorridos/MapaRecorrido.kt</div>
+<ul>
+  <li>El <code>MapView</code> de osmdroid se crea una sola vez con <code>remember</code> y se muestra con <code>AndroidView</code>. El bloque <code>update</code> se ejecuta en cada recomposición: borra y vuelve a dibujar los marcadores y la línea del recorrido.</li>
+  <li><b>Ciclo de vida</b>: el mapa necesita enterarse de cuándo la pantalla se pausa o se reanuda. Se hace con un <code>LifecycleEventObserver</code> dentro de un <code>DisposableEffect</code>.</li>
+  <li><b>Error 403 de OpenStreetMap</b>: OSM exige que cada app se identifique. osmdroid reemplaza la identificación por el nombre del paquete (<code>com.example…</code>), que OSM bloquea. Por eso se define <code>MOSAICOS_OSM</code> a mano, sin esa opción, y la app se identifica como "AppGeologia/1.0".</li>
+  <li><code>iconoNumerado()</code> dibuja con <code>Canvas</code> el círculo marrón con el número de la parada.</li>
+  <li><code>clipToBounds()</code> evita que el mapa se dibuje por fuera de su recuadro.</li>
+</ul>
+</div>
+
+<div class="archivo">
+<h3>Ubicacion.kt</h3><div class="ruta">ubicacion/Ubicacion.kt</div>
+<ul>
+  <li><code>obtenerPosicionActual()</code> es una función <code>suspend</code>: espera la posición sin bloquear la pantalla. Usa el GPS si está activado y, si no, la red.</li>
+  <li><code>suspendCancellableCoroutine</code> convierte la respuesta "con callback" de Android en algo que se puede esperar con una corrutina.</li>
+  <li>Si en 30 segundos no llega una posición nueva (<code>withTimeoutOrNull</code>), usa la <b>última posición conocida</b>.</li>
+  <li><code>rememberSolicitudUbicacion()</code> empaqueta todo para las pantallas: pide permiso si hace falta, busca y avisa el resultado. Además expone <code>buscando</code> para mostrar "Buscando señal GPS…".</li>
+</ul>
+</div>
+
+<div class="archivo">
+<h3>AlmacenFotos.kt</h3><div class="ruta">archivos/AlmacenFotos.kt</div>
+<p>Cada foto importada pasa por <code>guardar()</code>:</p>
+<ol>
+  <li><b>Medir sin cargar</b>: <code>inJustDecodeBounds = true</code> lee solo el tamaño (una foto de 50 MP no entraría en memoria).</li>
+  <li><b>Cargar reducida</b>: <code>inSampleSize</code> carga la imagen ya achicada a la mitad, a un cuarto, etc.</li>
+  <li><b>Escalar y enderezar</b>: con una <code>Matrix</code> se lleva a 2048 px como máximo y se rota según el dato EXIF de orientación (las cámaras guardan muchas fotos "acostadas" con una marca que indica cómo rotarlas).</li>
+  <li><b>Guardar</b> como JPEG calidad 85 con un nombre único (<code>UUID</code>).</li>
+</ol>
+<p><code>cargarReducida()</code> se usa para miniaturas (320 px), el visor (2048 px) y el PDF (1200 px).</p>
+</div>
+
+<div class="archivo">
+<h3>AlmacenExportaciones.kt</h3><div class="ruta">archivos/AlmacenExportaciones.kt</div>
+<p>Maneja la carpeta <code>exportaciones/</code>. <code>nuevoArchivo()</code> agrega fecha y hora al nombre para no pisar exportaciones anteriores. <code>verPdf()</code> y <code>compartirPdf()</code> usan un <code>Intent</code> con una <code>Uri</code> del <code>FileProvider</code>: otras apps no pueden leer los archivos privados de la app directamente, así que se les da un permiso temporal (<code>FLAG_GRANT_READ_URI_PERMISSION</code>).</p>
+</div>
+
+<!-- =============================================================== 9 -->
+<h2>9. Generación del PDF</h2>
+<div class="archivo">
+<h3>PlanillaPdf.kt</h3><div class="ruta">pdf/PlanillaPdf.kt</div>
+<p>Android trae <code>PdfDocument</code>: cada página es un <code>Canvas</code> (un lienzo) donde se dibujan líneas, rectángulos y texto en coordenadas. La unidad es el <b>punto</b> (1/72 de pulgada); una hoja A4 mide <b>595 × 842 puntos</b>. El origen (0, 0) está arriba a la izquierda y la <i>y</i> crece hacia abajo.</p>
+
+<h4>Recorrido del código</h4>
+<table>
+  <tr><th>Función</th><th>Qué dibuja</th></tr>
+  <tr><td><code>generarParada()</code> / <code>generarRecorrido()</code></td><td>Puntos de entrada. El recorrido agrega una carátula y luego cada parada.</td></tr>
+  <tr><td><code>Documento</code> (clase interna)</td><td>Abre y cierra páginas, lleva el número de página y agrega el pie.</td></tr>
+  <tr><td><code>dibujarParada()</code></td><td>Divide los items con datos de suelo en grupos de 4 (una página de tabla por grupo), agrega observaciones y fichas.</td></tr>
+  <tr><td><code>dibujarEncabezado()</code></td><td>El recuadro de datos del sitio en tres columnas (Calicata, Coordenadas, Geomorfología…).</td></tr>
+  <tr><td><code>dibujarTablaHorizontes()</code></td><td>La tabla: recorre la lista <code>filas</code> y dibuja etiqueta + 4 celdas por fila; después la columna vertical de grupos y la subcolumna "Forma".</td></tr>
+  <tr><td><code>dibujarOpciones()</code></td><td>Imprime "MA – A – C – G – D" y encierra la elegida en un óvalo rojo, en negrita.</td></tr>
+  <tr><td><code>dibujarFichasItems()</code></td><td>Una ficha por item: encabezado, descripción y fotos en dos columnas; salta de página cuando no entra.</td></tr>
+  <tr><td><code>dibujarFoto()</code></td><td>Escala la foto para que entre en su celda sin deformarse.</td></tr>
+  <tr><td><code>textoAjustado()</code></td><td>Escribe texto con saltos de línea (<code>StaticLayout</code>) y achica la letra hasta que entre en la celda.</td></tr>
+  <tr><td><code>textoVertical()</code></td><td>Los títulos rotados 90° (Límite, Consistencia…); parte en dos líneas si no entran.</td></tr>
+</table>
+
+<h4>La tabla está definida como datos</h4>
+<p>En vez de escribir 29 filas a mano, hay una lista <code>filas</code>. Cada <code>Fila</code> dice a qué grupo pertenece, su etiqueta, qué campo del item mostrar y, si corresponde, sus opciones:</p>
+<pre><code>Fila("Límite", "Definición", { it.limiteDefinicion }, OpcionesSuelo.limiteDefinicion, altoFila),
+Fila("Color", "Seco", { it.colorSeco }, alto = altoFila),</code></pre>
+<p>Las filas con el mismo grupo consecutivo forman la columna vertical. Para agregar una fila al PDF, alcanza con agregar un elemento a esta lista.</p>
+
+<div class="nota"><b>Cómo se verificó:</b> la prueba <code>PlanillaPdfTest</code> genera un PDF con datos de ejemplo, cuenta las páginas y guarda cada página como imagen PNG para revisarla a ojo (ver capítulo 12).</div>
+</div>
+
+<div class="archivo">
+<h3>DialogoExportarPdf.kt</h3><div class="ruta">pdf/DialogoExportarPdf.kt</div>
+<p>Genera el PDF en segundo plano (<code>withContext(Dispatchers.Default)</code>) mientras muestra "Generando PDF…", y después ofrece <b>Ver</b>, <b>Compartir</b> o <b>Guardar copia en el teléfono</b>.</p>
+</div>
+
+<!-- =============================================================== 10 -->
+<h2>10. Flujos completos paso a paso</h2>
+
+<h3>A. Crear un recorrido</h3>
+<div class="flujo">
+  <span class="paso">Inicio: "Hacer un nuevo recorrido"</span><span class="f">→</span>
+  <span class="paso"><code>DialogoNuevoRecorrido</code></span><span class="f">→</span>
+  <span class="paso"><code>viewModel.crearRecorrido()</code></span><span class="f">→</span>
+  <span class="paso"><code>repo.crearRecorrido()</code> agrega a la lista y escribe el JSON</span><span class="f">→</span>
+  <span class="paso"><code>navigate(RutaRecorrido(id))</code></span>
+</div>
+
+<h3>B. Nueva parada con GPS</h3>
+<div class="flujo">
+  <span class="paso">"Nueva parada" → "Usar mi ubicación"</span><span class="f">→</span>
+  <span class="paso"><code>ubicacion.solicitar()</code></span><span class="f">→</span>
+  <span class="paso">¿Hay permiso? Si no, se pide</span><span class="f">→</span>
+  <span class="paso"><code>obtenerPosicionActual()</code></span><span class="f">→</span>
+  <span class="paso"><code>ResultadoUbicacion.Exito</code></span><span class="f">→</span>
+  <span class="paso"><code>crearYAbrir(lat, lon, alt, precisión)</code></span><span class="f">→</span>
+  <span class="paso">Editor de la parada</span>
+</div>
+
+<h3>C. Agregar un item con una foto</h3>
+<div class="flujo">
+  <span class="paso">"Agregar item u observación"</span><span class="f">→</span>
+  <span class="paso"><code>viewModel.agregarItem()</code> devuelve el id</span><span class="f">→</span>
+  <span class="paso"><code>navigate(RutaItem(…))</code></span><span class="f">→</span>
+  <span class="paso">"Tomar foto"</span><span class="f">→</span>
+  <span class="paso">Cámara escribe en el archivo temporal</span><span class="f">→</span>
+  <span class="paso"><code>importarArchivo()</code> endereza y achica</span><span class="f">→</span>
+  <span class="paso"><code>item.copy(fotos = fotos + nombre)</code></span><span class="f">→</span>
+  <span class="paso">Autoguardado → <code>guardarItem()</code></span>
+</div>
+
+<h3>D. Exportar un PDF</h3>
+<div class="flujo">
+  <span class="paso">Ícono compartir en la parada</span><span class="f">→</span>
+  <span class="paso">Se guarda lo pendiente (<code>guardar()</code>)</span><span class="f">→</span>
+  <span class="paso"><code>DialogoExportarPdf</code></span><span class="f">→</span>
+  <span class="paso"><code>PlanillaPdf.generarParada()</code></span><span class="f">→</span>
+  <span class="paso">Archivo en <code>exportaciones/</code></span><span class="f">→</span>
+  <span class="paso">Ver / Compartir (Intent + FileProvider) / Guardar copia</span>
+</div>
+
+<h3>E. Autoguardado al escribir</h3>
+<div class="flujo">
+  <span class="paso">Tecla</span><span class="f">→</span>
+  <span class="paso"><code>onValueChange</code> → <code>item = item.copy(…)</code></span><span class="f">→</span>
+  <span class="paso">Recomposición: el campo muestra el texto</span><span class="f">→</span>
+  <span class="paso"><code>LaunchedEffect(item)</code> espera 500 ms</span><span class="f">→</span>
+  <span class="paso">Sin cambios nuevos: <code>onGuardar(item)</code></span><span class="f">→</span>
+  <span class="paso">Repositorio: memoria + JSON</span>
+</div>
+
+<!-- =============================================================== 11 -->
+<h2>11. Archivos en el teléfono, permisos y Gradle</h2>
+
+<h3>Dónde quedan los datos</h3>
+<p>Todo está en el almacenamiento <b>privado</b> de la app (otras apps no lo pueden ver; se borra al desinstalar):</p>
+<table>
+  <tr><th>Ubicación</th><th>Contenido</th><th>Quién la maneja</th></tr>
+  <tr><td><code>files/recorridos.json</code></td><td>Todos los recorridos, paradas e items.</td><td><code>RecorridoRepository</code></td></tr>
+  <tr><td><code>files/fotos/</code></td><td>Las fotos de los items (JPEG).</td><td><code>AlmacenFotos</code></td></tr>
+  <tr><td><code>files/exportaciones/</code></td><td>Los PDF generados.</td><td><code>AlmacenExportaciones</code></td></tr>
+  <tr><td><code>cache/camara/</code></td><td>Foto temporal mientras la cámara está abierta.</td><td><code>AlmacenFotos</code></td></tr>
+  <tr><td><code>files/osmdroid/</code></td><td>Mosaicos del mapa ya descargados (para usar sin señal).</td><td>osmdroid</td></tr>
+</table>
+<p>Ejemplo resumido de <code>recorridos.json</code>:</p>
+<pre><code>[ { "id": 1759512345000, "nombre": "Salida Valle", "tipoSalida": "SUELOS", "finalizado": false,
+    "paradas": [ { "id": 1759512399000, "numero": 1, "fecha": 1759512399000,
+        "latitud": -45.864313, "longitud": -67.527637, "altitud": 85.0,
+        "sitio": { "calicata": "C-07", "geomorfologia": "Terraza fluvial", ... },
+        "items": [ { "id": 1759512450000, "titulo": "Horizonte A", "fotos": ["3f2a….jpg"],
+                     "nombre": "A", "profundidad": "0-12", "reaccionHcl": "SEf", ... } ] } ] } ]</code></pre>
+
+<h3>AndroidManifest.xml</h3>
+<ul>
+  <li><code>INTERNET</code> y <code>ACCESS_NETWORK_STATE</code>: descargar el mapa.</li>
+  <li><code>ACCESS_FINE_LOCATION</code> y <code>ACCESS_COARSE_LOCATION</code>: el GPS. Se piden al usuario en el momento de usarlos.</li>
+  <li>La cámara <b>no</b> necesita permiso: la app le pide a la app de cámara del teléfono que saque la foto.</li>
+  <li><code>FileProvider</code> + <code>res/xml/file_paths.xml</code>: qué carpetas se pueden compartir (exportaciones y la foto temporal de la cámara).</li>
+</ul>
+
+<h3>Gradle: dependencias</h3>
+<p>Las versiones están centralizadas en <code>gradle/libs.versions.toml</code> y se usan en <code>app/build.gradle.kts</code>:</p>
+<table>
+  <tr><th>Librería</th><th>Uso</th></tr>
+  <tr><td><code>androidx.compose.*</code> (BOM), <code>material3</code></td><td>Interfaz.</td></tr>
+  <tr><td><code>material-icons-core</code></td><td>Íconos (casa, lugar, compartir, eliminar…).</td></tr>
+  <tr><td><code>navigation-compose</code></td><td>Navegación entre pantallas.</td></tr>
+  <tr><td><code>lifecycle-viewmodel-compose</code></td><td><code>viewModel()</code> en Compose.</td></tr>
+  <tr><td><code>kotlinx-serialization-json</code> + plugin <code>kotlin.serialization</code></td><td>JSON y rutas tipadas.</td></tr>
+  <tr><td><code>osmdroid-android</code></td><td>Mapa.</td></tr>
+</table>
+
+<!-- =============================================================== 12 -->
+<h2>12. Pruebas</h2>
+<h3>Pruebas locales (en la PC)</h3>
+<p><code>app/src/test/java/com/example/appgeologia/RecorridoRepositoryTest.kt</code> — 9 pruebas del repositorio y del modelo. Se ejecutan sin teléfono, en segundos:</p>
+<ul>
+  <li>Las paradas se numeran 1, 2, 3… y copian el proyecto del recorrido.</li>
+  <li>Los datos se mantienen al "reabrir la app" (se crea un repositorio nuevo sobre el mismo archivo).</li>
+  <li>Guardar una parada no borra sus items.</li>
+  <li>Los ids son únicos aunque el reloj devuelva siempre el mismo valor.</li>
+  <li>Un archivo dañado no rompe la app y se guarda una copia.</li>
+  <li>Se pueden leer datos de la versión anterior (con "horizontes").</li>
+  <li><code>tieneDatosSuelo()</code> y <code>fotosEnUso()</code> funcionan como se espera.</li>
+</ul>
+<p>Truco usado: el repositorio recibe por parámetro el <code>scope</code> de corrutinas y el <code>reloj</code>. En las pruebas se pasa <code>Dispatchers.Unconfined</code> (las escrituras pasan al instante) y un reloj fijo. Esto se llama <b>inyección de dependencias</b> y es lo que hace al código fácil de probar.</p>
+
+<h3>Pruebas instrumentadas (en el teléfono o emulador)</h3>
+<p><code>app/src/androidTest/…/PlanillaPdfTest.kt</code> — genera fotos de prueba, arma el PDF de una parada y de un recorrido, verifica la cantidad de páginas y guarda cada página como PNG en <code>/sdcard/Android/data/com.example.appgeologia/files/pdf-test/</code>.</p>
+
+<h3>Cómo ejecutarlas</h3>
+<ul>
+  <li>En Android Studio: clic derecho sobre la carpeta <code>test</code> o <code>androidTest</code> → <b>Run Tests</b>, o el triángulo verde junto a cada prueba.</li>
+  <li>Desde la terminal: <code>gradlew testDebugUnitTest</code> (locales) y <code>gradlew connectedDebugAndroidTest</code> (con un teléfono o emulador conectado).</li>
+</ul>
+
+<!-- =============================================================== 13 -->
+<h2>13. Receta: agregar un campo nuevo a la planilla</h2>
+<p>Ejemplo: agregar <b>"pH"</b> a cada item. Es un buen ejercicio porque recorre todas las capas.</p>
+<ol>
+  <li><b>Modelo</b> — <code>data/recorrido/Modelos.kt</code>, dentro de <code>ItemParada</code>:
+<pre><code>val ph: String = "",   <span class="c">// con valor por defecto: los JSON viejos se siguen leyendo</span></code></pre></li>
+  <li><b>Formulario</b> — <code>ui/recorridos/EditarItemScreen.kt</code>, dentro de <code>CamposSuelo</code>, en la sección que corresponda:
+<pre><code>CampoTexto("pH", h.ph, { cambiar(h.copy(ph = it)) }, teclado = KeyboardType.Decimal)</code></pre></li>
+  <li><b>PDF</b> — <code>pdf/PlanillaPdf.kt</code>, agregar una fila a la lista <code>filas</code> donde quieras que aparezca:
+<pre><code>Fila(null, "pH", { it.ph }, alto = altoFila),</code></pre></li>
+  <li>Listo. No hace falta tocar el repositorio ni el ViewModel: guardan el item completo. <code>tieneDatosSuelo()</code> también lo considera solo.</li>
+</ol>
+<div class="nota"><b>Si el campo tiene opciones fijas</b> (como Humedad): definí un <code>GrupoOpciones</code> en <code>OpcionesSuelo.kt</code>, usá <code>SelectorOpciones</code> en el formulario y pasá el grupo como cuarto parámetro de <code>Fila</code>; el PDF dibujará las opciones con la elegida encerrada en un círculo.</div>
+<div class="nota"><b>Ojo con el alto de página:</b> la tabla ya ocupa casi toda la hoja A4. Si agregás varias filas, puede que tengas que bajar <code>altoFila</code> (16 puntos) o mover las observaciones a otra página.</div>
+
+<!-- =============================================================== 14 -->
+<h2>14. Ejercicios para practicar y glosario</h2>
+<h3>Ejercicios (de más fácil a más difícil)</h3>
+<ol>
+  <li><b>Colores</b>: cambiá la paleta en <code>ui/theme/Color.kt</code> y <code>Theme.kt</code> y mirá cómo cambia toda la app.</li>
+  <li><b>Texto de bienvenida</b>: modificá el encabezado de <code>InicioScreen.kt</code> y agregá un cuarto contador ("Items").</li>
+  <li><b>Sugerencias</b>: agregá opciones a <code>sugerenciasTextura</code> en <code>OpcionesSuelo.kt</code>.</li>
+  <li><b>Campo nuevo</b>: seguí la receta del capítulo 13.</li>
+  <li><b>Nuevo tipo de salida</b>: agregá <code>GEOLOGIA_ESTRUCTURAL("Geología estructural")</code> al enum <code>TipoSalida</code>. Aparece solo en el diálogo; pensá qué campos distintos necesitaría.</li>
+  <li><b>Ordenar paradas</b>: en <code>DetalleRecorridoScreen.kt</code> agregá un botón para ver las paradas de la más nueva a la más vieja.</li>
+  <li><b>Prueba nueva</b>: en <code>RecorridoRepositoryTest.kt</code> escribí una prueba que verifique que <code>cambiarEstado()</code> finaliza un recorrido.</li>
+  <li><b>Desafío</b>: mostrar en el mapa el recorrido entero aunque las paradas estén lejos (pista: <code>BoundingBox</code> y <code>zoomToBoundingBox</code> de osmdroid).</li>
+</ol>
+
+<h3>Glosario</h3>
+<table>
+  <tr><th>Término</th><th>Significado</th></tr>
+  <tr><td>Activity</td><td>Una "ventana" de Android. Esta app tiene una sola.</td></tr>
+  <tr><td>Composable</td><td>Función que describe una parte de la interfaz.</td></tr>
+  <tr><td>Recomposición</td><td>Cuando Compose vuelve a ejecutar un composable porque cambió un dato que usa.</td></tr>
+  <tr><td>Estado</td><td>Datos que, al cambiar, deben reflejarse en pantalla.</td></tr>
+  <tr><td>ViewModel</td><td>Objeto que guarda el estado de la interfaz y sobrevive a la rotación.</td></tr>
+  <tr><td>StateFlow</td><td>Valor observable: avisa a quien lo escucha cada vez que cambia.</td></tr>
+  <tr><td>Corrutina / <code>suspend</code></td><td>Código que puede "esperar" (archivo, GPS) sin congelar la pantalla.</td></tr>
+  <tr><td>Dispatchers.IO</td><td>Hilos pensados para leer y escribir archivos o red.</td></tr>
+  <tr><td>Data class</td><td>Clase para guardar datos, con <code>copy()</code> y comparación automática.</td></tr>
+  <tr><td>Serialización</td><td>Convertir un objeto a texto (JSON) y volver.</td></tr>
+  <tr><td>Uri</td><td>Dirección de un archivo o recurso que se puede pasar a otra app.</td></tr>
+  <tr><td>FileProvider</td><td>Componente que entrega Uris seguras de archivos privados.</td></tr>
+  <tr><td>Intent</td><td>Mensaje para pedirle algo a otra app (ver un PDF, compartir, sacar una foto).</td></tr>
+  <tr><td>EXIF</td><td>Datos dentro de una foto (orientación, fecha, cámara).</td></tr>
+  <tr><td>Mosaicos (tiles)</td><td>Cuadraditos de imagen con los que se arma el mapa.</td></tr>
+  <tr><td>Punto (pt)</td><td>Unidad del PDF: 1/72 de pulgada. A4 = 595 × 842 pt.</td></tr>
+</table>
+
+</body>
+</html>

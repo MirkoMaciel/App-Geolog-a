@@ -14,6 +14,7 @@ import com.example.appgeologia.data.recorrido.DatosSitio
 import com.example.appgeologia.data.recorrido.GrupoOpciones
 import com.example.appgeologia.archivos.AlmacenExportaciones
 import com.example.appgeologia.archivos.AlmacenFotos
+import com.example.appgeologia.archivos.DatosExportacion
 import com.example.appgeologia.data.recorrido.ItemParada
 import com.example.appgeologia.data.recorrido.tieneDatosSuelo
 import com.example.appgeologia.data.recorrido.Opcion
@@ -166,7 +167,10 @@ class PlanillaPdf(private val context: Context) {
     fun generarParada(recorrido: Recorrido, parada: Parada): File {
         val documento = Documento()
         dibujarParada(documento, recorrido, parada)
-        return documento.guardar(exportaciones.nuevoArchivo("Parada_${parada.numero}_${recorrido.nombre}"))
+        return documento.guardar(exportaciones.nuevoArchivo(
+            "Parada_${parada.numero}_${recorrido.nombre}",
+            DatosExportacion(recorrido.id, recorrido.nombre, "Parada ${parada.numero}")
+        ))
     }
 
     /** Genera un PDF con una carátula del recorrido y la planilla de cada parada. */
@@ -174,7 +178,10 @@ class PlanillaPdf(private val context: Context) {
         val documento = Documento()
         dibujarCaratula(documento.nuevaPagina(), recorrido)
         recorrido.paradas.sortedBy { it.numero }.forEach { dibujarParada(documento, recorrido, it) }
-        return documento.guardar(exportaciones.nuevoArchivo("Recorrido_${recorrido.nombre}"))
+        return documento.guardar(exportaciones.nuevoArchivo(
+            "Salida_${recorrido.nombre}",
+            DatosExportacion(recorrido.id, recorrido.nombre, "Salida completa")
+        ))
     }
 
     // ------------------------------------------------------------------ Parada
@@ -219,7 +226,7 @@ class PlanillaPdf(private val context: Context) {
      */
     private fun dibujarFichasItems(documento: Documento, recorrido: Recorrido, parada: Parada) {
         val limite = altoPagina - margen - 20f
-        val tituloPagina = "ITEMS DE LA PARADA N° ${parada.numero}"
+        val tituloPagina = "HORIZONTES DE LA PARADA N° ${parada.numero}"
         var canvas = documento.nuevaPagina()
         var y = dibujarTitulo(canvas, recorrido, parada, tituloPagina) + 10f
 
@@ -240,7 +247,7 @@ class PlanillaPdf(private val context: Context) {
             canvas.drawRect(margen, y, margen + anchoUtil, y + altoEncabezado, fondo)
             canvas.drawRect(margen, y, margen + anchoUtil, y + altoEncabezado, lapizLinea)
             textoNegrita.textSize = 10f
-            canvas.drawText("${i + 1}. ${item.titulo.ifBlank { "Item sin título" }}", margen + 5f, y + 14f, textoNegrita)
+            canvas.drawText("${i + 1}. ${item.titulo.ifBlank { "Horizonte sin título" }}", margen + 5f, y + 14f, textoNegrita)
             texto.textSize = 8f
             val detalle = listOfNotNull(
                 item.fecha.takeIf { it > 0 }?.let { horaCorta(it) },
@@ -307,7 +314,7 @@ class PlanillaPdf(private val context: Context) {
         textoNegrita.textSize = 11f
         canvas.drawText(titulo, margen, y, textoNegrita)
         texto.textSize = 8f
-        val derecha = "Recorrido: ${recorrido.nombre}  ·  Parada N° ${parada.numero}"
+        val derecha = "Salida: ${recorrido.nombre}  ·  Parada N° ${parada.numero}"
         canvas.drawText(derecha, anchoPagina - margen - texto.measureText(derecha), y, texto)
         textoNegrita.textSize = 8f
         return y + 4f
@@ -542,7 +549,7 @@ class PlanillaPdf(private val context: Context) {
     private fun dibujarCaratula(canvas: Canvas, recorrido: Recorrido) {
         var y = margen + 20f
         textoNegrita.textSize = 16f
-        canvas.drawText("Recorrido: ${recorrido.nombre}", margen, y, textoNegrita)
+        canvas.drawText("Salida de campo: ${recorrido.nombre}", margen, y, textoNegrita)
         y += 22f
 
         texto.textSize = 10f
@@ -550,7 +557,7 @@ class PlanillaPdf(private val context: Context) {
             "Tipo de salida: ${recorrido.tipoSalida.nombre}",
             "Proyecto: ${recorrido.proyecto.ifBlank { "—" }}",
             "Fecha de inicio: ${fechaCorta(recorrido.fechaInicio)}",
-            "Estado: ${if (recorrido.finalizado) "Finalizado" else "En curso"}",
+            "Estado: ${if (recorrido.finalizado) "Finalizada" else "En curso"}",
             "Cantidad de paradas: ${recorrido.paradas.size}"
         )
         datos.forEach { canvas.drawText(it, margen, y, texto); y += 14f }
@@ -566,7 +573,7 @@ class PlanillaPdf(private val context: Context) {
         // Tabla resumen de paradas
         y += 10f
         val columnas = listOf("N°" to 30f, "Fecha" to 70f, "Calicata" to 110f, "Latitud" to 80f,
-            "Longitud" to 80f, "Altitud" to 60f, "Items" to 109f)
+            "Longitud" to 80f, "Altitud" to 60f, "Horizontes" to 109f)
         val alto = 16f
         fun filaTabla(valores: List<String>, negrita: Boolean) {
             var x = margen

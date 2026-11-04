@@ -58,8 +58,8 @@ fun AppGeologia() {
             InicioScreen(
                 recorridos = recorridos,
                 cantidadExportaciones = remember { exportaciones.listar().size },
-                onCrearRecorrido = { nombre, tipo, proyecto, descripcion ->
-                    val id = viewModel.crearRecorrido(nombre, tipo, proyecto, descripcion)
+                onCrearRecorrido = { nueva ->
+                    val id = viewModel.crearRecorrido(nueva)
                     navController.navigate(RutaRecorrido(id))
                 },
                 onAbrirRecorrido = { navController.navigate(RutaRecorrido(it)) },
@@ -73,8 +73,9 @@ fun AppGeologia() {
             ListaRecorridosScreen(
                 recorridos = recorridos,
                 onAbrirRecorrido = { navController.navigate(RutaRecorrido(it)) },
-                onCrearRecorrido = { nombre, tipo, proyecto, descripcion ->
-                    val id = viewModel.crearRecorrido(nombre, tipo, proyecto, descripcion)
+                onEliminarRecorridos = { viewModel.eliminarRecorridos(it) },
+                onCrearRecorrido = { nueva ->
+                    val id = viewModel.crearRecorrido(nueva)
                     navController.navigate(RutaRecorrido(id))
                 },
                 barraInferior = barraInferior
@@ -82,7 +83,7 @@ fun AppGeologia() {
         }
 
         composable<RutaExportaciones> {
-            ExportacionesScreen(barraInferior = barraInferior)
+            ExportacionesScreen(recorridos = recorridos, barraInferior = barraInferior)
         }
 
         composable<RutaRecorrido> { entrada ->
@@ -157,7 +158,7 @@ private fun BarraInferior(navController: NavHostController) {
             selected = destino?.hasRoute<RutaRecorridos>() == true,
             onClick = { navController.irAPestana(RutaRecorridos) },
             icon = { Icon(Icons.Filled.Place, contentDescription = null) },
-            label = { Text("Recorridos") }
+            label = { Text("Salidas") }
         )
         NavigationBarItem(
             selected = destino?.hasRoute<RutaExportaciones>() == true,

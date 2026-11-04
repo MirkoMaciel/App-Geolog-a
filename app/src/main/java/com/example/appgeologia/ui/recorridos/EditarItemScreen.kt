@@ -1,5 +1,6 @@
 package com.example.appgeologia.ui.recorridos
 
+import com.example.appgeologia.ui.componentes.SeccionDesplegable
 import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -99,6 +100,8 @@ fun EditarItemScreen(
     DisposableEffect(Unit) { onDispose { onGuardar(actual) } }
 
     var mostrarSuelo by rememberSaveable { mutableStateOf(itemGuardado.tieneDatosSuelo()) }
+    // Fotos: cerrado si todavía no hay, para invitar a desplegarlo; abierto si ya tiene.
+    var mostrarFotos by rememberSaveable { mutableStateOf(itemGuardado.fotos.isNotEmpty()) }
     var fotoAbierta by remember { mutableStateOf<String?>(null) }
     var fotoAQuitar by remember { mutableStateOf<String?>(null) }
     var procesando by remember { mutableIntStateOf(0) }
@@ -147,7 +150,7 @@ fun EditarItemScreen(
             TopAppBar(
                 title = {
                     Column {
-                        Text(item.titulo.ifBlank { "Item sin título" })
+                        Text(item.titulo.ifBlank { "Horizonte sin título" })
                         Text("Parada $numeroParada", style = MaterialTheme.typography.bodySmall)
                     }
                 },
@@ -173,55 +176,72 @@ fun EditarItemScreen(
                 .padding(horizontal = 16.dp)
                 .padding(bottom = 32.dp)
         ) {
-            TituloSeccion("Observación")
-            CampoTexto("Título", item.titulo, { item = item.copy(titulo = it) })
-            CampoTexto("Descripción", item.descripcion, { item = item.copy(descripcion = it) }, lineas = 4)
+            TituloSeccion("Descripción general horizonte")
+            CampoTexto(
+                "Título", item.titulo, { item = item.copy(titulo = it) },
+                placeholder = "Ej.: Primer horizonte"
+            )
+            CampoTexto(
+                "Descripción", item.descripcion, { item = item.copy(descripcion = it) },
+                lineas = 4,
+                placeholder = "Ej.: Excavación realizada por nosotros"
+            )
 
-            TituloSeccion("Fotos (${item.fotos.size})")
-            if (item.fotos.isNotEmpty() || procesando > 0) {
-                Row(
-                    modifier = Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item.fotos.forEach { nombre ->
-                        Box {
-                            MiniaturaFoto(almacenFotos, nombre, tamano = 110, onClick = { fotoAbierta = nombre })
-                            // Box en lugar de IconButton: IconButton fuerza 48 dp y tapa la miniatura.
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .padding(6.dp)
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .background(Color.Black.copy(alpha = 0.55f))
-                                    .clickable { fotoAQuitar = nombre },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Filled.Close, contentDescription = "Quitar foto",
-                                    tint = Color.White, modifier = Modifier.size(18.dp)
-                                )
+            // ----- Fotos (desplegable) -----
+            Spacer(Modifier.padding(top = 8.dp))
+            SeccionDesplegable(
+                titulo = "Fotos (${item.fotos.size})",
+                abierta = mostrarFotos || procesando > 0,
+                onCambiar = { mostrarFotos = it },
+                detalle = if (item.fotos.isEmpty()) "¿Querés añadir imágenes?" else "Tocá una foto para verla"
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    if (item.fotos.isNotEmpty() || procesando > 0) {
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            item.fotos.forEach { nombre ->
+                                Box {
+                                    MiniaturaFoto(almacenFotos, nombre, tamano = 110, onClick = { fotoAbierta = nombre })
+                                    // Box en lugar de IconButton: IconButton fuerza 48 dp y tapa la miniatura.
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(6.dp)
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .background(Color.Black.copy(alpha = 0.55f))
+                                            .clickable { fotoAQuitar = nombre },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            Icons.Filled.Close, contentDescription = "Quitar foto",
+                                            tint = Color.White, modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+                            }
+                            if (procesando > 0) {
+                                Box(modifier = Modifier.size(110.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
                             }
                         }
                     }
-                    if (procesando > 0) {
-                        Box(modifier = Modifier.size(110.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = ::sacarFoto, modifier = Modifier.weight(1f)) {
+                            Text("Tomar foto")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                lanzadorGaleria.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Elegir de archivos")
                         }
                     }
-                }
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = ::sacarFoto, modifier = Modifier.weight(1f)) {
-                    Text("Tomar foto")
-                }
-                OutlinedButton(
-                    onClick = {
-                        lanzadorGaleria.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                    },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text("Elegir de archivos")
                 }
             }
 
@@ -236,8 +256,8 @@ fun EditarItemScreen(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            if (item.tieneDatosSuelo()) "Este item aparece como columna en la tabla del PDF."
-                            else "Opcional. Completalo si este item describe un horizonte del perfil.",
+                            if (item.tieneDatosSuelo()) "Este horizonte aparece como columna en la tabla del PDF."
+                            else "Opcional. Completalo para que aparezca como columna en la tabla del PDF.",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -259,7 +279,7 @@ fun EditarItemScreen(
         AlertDialog(
             onDismissRequest = { fotoAQuitar = null },
             title = { Text("Quitar foto") },
-            text = { Text("¿Quitar esta foto del item?") },
+            text = { Text("¿Quitar esta foto del horizonte?") },
             confirmButton = {
                 TextButton(onClick = {
                     item = item.copy(fotos = item.fotos - nombre)
@@ -278,7 +298,7 @@ private fun CamposSuelo(item: ItemParada, onCambio: (ItemParada) -> Unit) {
     fun cambiar(nuevo: ItemParada) = onCambio(nuevo)
 
     TituloSeccion("Horizonte")
-    CampoTexto("Horizonte (ej. A, Bt1, C)", h.nombre, { cambiar(h.copy(nombre = it)) })
+    CampoTexto("Nombre del horizonte (ej. A, Bt1, C)", h.nombre, { cambiar(h.copy(nombre = it)) })
     CampoTexto("Profundidad (cm, ej. 0-15)", h.profundidad, { cambiar(h.copy(profundidad = it)) })
 
     TituloSeccion("Límite")

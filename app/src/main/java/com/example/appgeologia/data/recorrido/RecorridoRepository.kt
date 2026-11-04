@@ -43,14 +43,20 @@ class RecorridoRepository(
 
     // ----- Recorridos -----
 
-    fun crearRecorrido(nombre: String, tipo: TipoSalida, proyecto: String, descripcion: String): Long {
+    fun crearRecorrido(
+        nombre: String,
+        tipo: TipoSalida,
+        proyecto: String,
+        descripcion: String,
+        fechaInicio: Long = reloj()
+    ): Long {
         val recorrido = Recorrido(
             id = nuevoId(),
             nombre = nombre.trim(),
             tipoSalida = tipo,
             proyecto = proyecto.trim(),
             descripcion = descripcion.trim(),
-            fechaInicio = reloj()
+            fechaInicio = fechaInicio
         )
         modificar { it + recorrido }
         return recorrido.id

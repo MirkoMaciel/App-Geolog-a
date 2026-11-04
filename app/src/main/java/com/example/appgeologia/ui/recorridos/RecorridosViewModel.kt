@@ -8,7 +8,6 @@ import com.example.appgeologia.data.recorrido.ItemParada
 import com.example.appgeologia.data.recorrido.Parada
 import com.example.appgeologia.data.recorrido.Recorrido
 import com.example.appgeologia.data.recorrido.RecorridoRepository
-import com.example.appgeologia.data.recorrido.TipoSalida
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -32,14 +31,17 @@ class RecorridosViewModel(app: Application) : AndroidViewModel(app) {
 
     fun buscarParada(recorridoId: Long, paradaId: Long): Parada? = repo.buscarParada(recorridoId, paradaId)
 
-    fun crearRecorrido(nombre: String, tipo: TipoSalida, proyecto: String, descripcion: String): Long =
-        repo.crearRecorrido(nombre, tipo, proyecto, descripcion)
+    fun crearRecorrido(nueva: NuevaSalida): Long =
+        repo.crearRecorrido(nueva.nombre, nueva.tipo, nueva.proyecto, nueva.descripcion, nueva.fechaInicio)
 
     fun eliminarRecorrido(id: Long) {
         val fotosRecorrido = repo.buscarRecorrido(id)?.paradas.orEmpty().flatMap { p -> p.items.flatMap { it.fotos } }
         repo.eliminarRecorrido(id)
         borrarFotos(fotosRecorrido)
     }
+
+    /** Borra varias salidas de una vez (con sus fotos). */
+    fun eliminarRecorridos(ids: List<Long>) = ids.forEach { eliminarRecorrido(it) }
 
     fun cambiarEstado(id: Long, finalizado: Boolean) = repo.cambiarEstado(id, finalizado)
 
