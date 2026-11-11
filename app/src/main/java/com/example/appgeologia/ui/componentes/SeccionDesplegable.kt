@@ -47,7 +47,7 @@ fun SeccionDesplegable(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (icono != null) {
-                Icon(icono, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(icono, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
                 Spacer(Modifier.width(16.dp))
             }
             Column(modifier = Modifier.weight(1f)) {

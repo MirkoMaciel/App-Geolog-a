@@ -242,7 +242,7 @@ private fun Acceso(icono: ImageVector, titulo: String, detalle: String, onClick:
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icono, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Icon(icono, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
         Spacer(Modifier.width(16.dp))
         Column {
             Text(titulo, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)

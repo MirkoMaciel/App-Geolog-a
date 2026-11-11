@@ -135,6 +135,8 @@ fun ListaRecorridosScreen(
             if (!modoSeleccion) {
                 ExtendedFloatingActionButton(
                     onClick = { mostrarDialogo = true },
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary,
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                     text = { Text("Nueva salida de campo") }
                 )
@@ -262,7 +264,14 @@ private fun TarjetaRecorrido(
                     )
                     AssistChip(
                         onClick = onClick,
-                        label = { Text(if (recorrido.finalizado) "Finalizada" else "En curso") }
+                        label = {
+                            Text(
+                                if (recorrido.finalizado) "Finalizada" else "En curso",
+                                color = if (recorrido.finalizado) MaterialTheme.colorScheme.secondary
+                                else MaterialTheme.colorScheme.tertiary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     )
                 }
                 Text(

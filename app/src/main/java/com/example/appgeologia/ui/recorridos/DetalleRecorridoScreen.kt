@@ -151,6 +151,8 @@ fun DetalleRecorridoScreen(
             if (!recorrido.finalizado) {
                 ExtendedFloatingActionButton(
                     onClick = { dialogoNuevaParada = true },
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary,
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                     text = { Text("Nueva parada") }
                 )
@@ -350,11 +352,11 @@ private fun InfoSalida(recorrido: Recorrido) {
                     if (recorrido.finalizado) "Finalizada" else "En curso",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
-                    color = if (recorrido.finalizado) MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (recorrido.finalizado) MaterialTheme.colorScheme.onSecondary
                     else MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier
                         .background(
-                            if (recorrido.finalizado) MaterialTheme.colorScheme.surfaceVariant
+                            if (recorrido.finalizado) MaterialTheme.colorScheme.secondary
                             else MaterialTheme.colorScheme.primary,
                             RoundedCornerShape(12.dp)
                         )

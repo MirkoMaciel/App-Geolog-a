@@ -14,6 +14,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -21,6 +22,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.example.appgeologia.data.recorrido.Parada
 import com.example.appgeologia.ubicacion.tienePermisoUbicacion
+import com.example.appgeologia.ui.theme.OxidoHierro
+import com.example.appgeologia.ui.theme.Pizarra
 import org.osmdroid.config.Configuration
 import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.TileSourcePolicy
@@ -137,7 +140,7 @@ fun MapaRecorrido(
             if (puntos.size > 1) {
                 vista.overlays.add(Polyline(vista).apply {
                     setPoints(puntos)
-                    outlinePaint.color = Color.rgb(139, 74, 43)
+                    outlinePaint.color = Pizarra.toArgb()
                     outlinePaint.strokeWidth = 6f
                 })
             }
@@ -181,7 +184,7 @@ private fun configurarOsmdroid(context: Context) {
     }
 }
 
-/** Círculo marrón con el número de la parada. */
+/** Círculo color óxido con el número de la parada. */
 private fun iconoNumerado(context: Context, numero: Int): BitmapDrawable {
     val densidad = context.resources.displayMetrics.density
     val tam = (30 * densidad).toInt()
@@ -190,7 +193,7 @@ private fun iconoNumerado(context: Context, numero: Int): BitmapDrawable {
     val radio = tam / 2f
     canvas.drawCircle(radio, radio, radio, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
     canvas.drawCircle(radio, radio, radio - 2 * densidad, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(139, 74, 43)
+        color = OxidoHierro.toArgb()
     })
     val texto = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
