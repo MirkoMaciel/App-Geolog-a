@@ -1,0 +1,6 @@
+# Archivos binarios: git no debe tocar sus fines de línea
+*.pdf binary
+*.map binary
+*.webp binary
+*.png binary
+*.apk binary
