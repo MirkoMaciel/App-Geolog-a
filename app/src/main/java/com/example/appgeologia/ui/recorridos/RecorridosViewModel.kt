@@ -3,6 +3,7 @@ package com.example.appgeologia.ui.recorridos
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.appgeologia.archivos.AlmacenExportaciones
 import com.example.appgeologia.archivos.AlmacenFotos
 import com.example.appgeologia.data.recorrido.ItemParada
 import com.example.appgeologia.data.recorrido.Parada
@@ -27,6 +28,11 @@ class RecorridosViewModel(app: Application) : AndroidViewModel(app) {
     init {
         // Fotos que quedaron sueltas (por ejemplo, si la app se cerró en medio de una edición).
         viewModelScope.launch(Dispatchers.IO) { fotos.eliminarNoUsadas(repo.fotosEnUso()) }
+        // PDFs duplicados de versiones anteriores (una copia nueva por cada exportación):
+        // se deja el más reciente de cada parada y salida.
+        viewModelScope.launch(Dispatchers.IO) {
+            AlmacenExportaciones(app).limpiarExportacionesAnteriores(repo.recorridos.value)
+        }
     }
 
     fun buscarParada(recorridoId: Long, paradaId: Long): Parada? = repo.buscarParada(recorridoId, paradaId)

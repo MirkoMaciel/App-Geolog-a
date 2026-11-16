@@ -1,4 +1,26 @@
-# Registro de cambios — App Geología
+# Registro de cambios — Patagonia Ground Note (PGN)
+
+## Versión 1.2 — 11 de noviembre de 2026
+
+Rama `feature/feedback-docente`. APK: `APK/PGN_v1.2.apk` (21 MB, `versionCode = 3`).
+Se instala encima de la 1.1 sin perder datos.
+
+- **Nombre e ícono:** la app se llama **PGN** en el celular; "Patagonia Ground Note" en el
+  inicio ("Bienvenido/a a Patagonia Ground Note") y en el pie de los PDF. Ícono nuevo.
+- **Color Munsell:** tabla de colores (10YR y 7.5YR) para elegir el color seco y húmedo.
+  En el PDF solo va la notación en texto.
+- **Textura:** triángulo textural USDA para marcar arena/limo/arcilla y obtener la clase.
+- **Concentraciones:** "D" ahora es Difuso; la forma se elige con figuras y en el PDF va la
+  forma elegida. **Raíces:** tamaños muy finas, finas, medias, gruesas, muy gruesas.
+- **PDF:** un solo PDF vigente por parada/salida; si ya existe, aviso con Reemplazar /
+  Usar el anterior / Guardar como copia nueva. Limpieza automática de exportaciones viejas.
+  Fotos reducidas a 150 dpi (PDF mucho más livianos).
+- **Mapa sin conexión:** la app trae un mapa de la zona de Escalante (Chubut), de Camarones a
+  Pico Truncado y de la costa a Sarmiento (8,5 MB, datos OpenStreetMap). Sin internet se usa
+  solo, con un aviso debajo del mapa; también se puede elegir con "Usar mapa descargado".
+- **Pruebas:** prueba integral de exportación (`TestPDF/`) y prueba del mapa sin conexión.
+
+---
 
 ## Versión 1.1 — 3 y 4 de noviembre de 2026
 

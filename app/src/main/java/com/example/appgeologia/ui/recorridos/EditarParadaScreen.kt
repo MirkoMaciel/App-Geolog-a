@@ -65,8 +65,7 @@ import com.example.appgeologia.ui.componentes.MiniaturaFoto
 import com.example.appgeologia.data.recorrido.OpcionesSuelo
 import com.example.appgeologia.data.recorrido.Parada
 import com.example.appgeologia.data.recorrido.Recorrido
-import com.example.appgeologia.pdf.DialogoExportarPdf
-import com.example.appgeologia.pdf.PlanillaPdf
+import com.example.appgeologia.pdf.DialogoExportarParada
 import com.example.appgeologia.ubicacion.ResultadoUbicacion
 import com.example.appgeologia.ubicacion.rememberSolicitudUbicacion
 import com.example.appgeologia.ui.componentes.CampoConSugerencias
@@ -270,11 +269,11 @@ fun EditarParadaScreen(
     }
 
     if (exportar) {
-        DialogoExportarPdf(
-            titulo = "Exportar parada ${parada.numero}",
-            generar = { context ->
-                // Se usa la versión en pantalla (con los horizontes guardados).
-                PlanillaPdf(context).generarParada(recorrido, paradaActual.copy(items = paradaGuardada.items))
+        // Se exporta lo ya guardado (antes de abrir el diálogo se llamó a guardar()).
+        DialogoExportarParada(
+            obtener = {
+                viewModel.recorridos.value.find { it.id == recorrido.id }
+                    ?.let { r -> r.paradas.find { it.id == parada.id }?.let { r to it } }
             },
             onCerrar = { exportar = false }
         )

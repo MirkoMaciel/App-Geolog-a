@@ -1,30 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Ícono "Perfil de horizontes": monolito de suelo con sus horizontes
+  (O humus, A, Bt con óxido de hierro y C con gravas), raíces y pasto.
+  Colores: paleta "Cartografía y Estratos" + marrones 10YR de la carta Munsell.
+-->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
+
+    <!-- Escala y centra el dibujo dentro de la zona segura de 66 dp -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.86"
+        android:scaleY="0.86"
+        android:translateY="1.7">
+
+    <group android:name="perfil">
+        <clip-path android:pathData="M40,27h28a7,7 0,0 1,7 7v42a7,7 0,0 1,-7 7h-28a7,7 0,0 1,-7 -7v-42a7,7 0,0 1,7 -7z" />
+
+        <!-- Horizonte O (humus) -->
+        <path android:fillColor="#2B2620" android:pathData="M33,27h42v7h-42z" />
+        <!-- Horizonte A (10YR 3/2) -->
+        <path android:fillColor="#4A3D30" android:pathData="M33,34h42v13h-42z" />
+        <!-- Horizonte Bt (óxido de hierro) -->
+        <path android:fillColor="#C85A17" android:pathData="M33,47h42v17h-42z" />
+        <!-- Horizonte C (10YR 7/3) -->
+        <path android:fillColor="#BBA88E" android:pathData="M33,64h42v19h-42z" />
+
+        <!-- Límites ondulados entre horizontes -->
+        <path
+            android:pathData="M33,47 Q40,45 47,47 T61,47 T75,47"
+            android:strokeWidth="1.2"
+            android:strokeColor="#592B2620" />
+        <path
+            android:pathData="M33,64 Q41,62 48,64.5 T62,63.5 T75,64.5"
+            android:strokeWidth="1.2"
+            android:strokeColor="#593B1604" />
+
+        <!-- Gravas del horizonte C -->
+        <path
+            android:fillColor="#8A939B"
+            android:pathData="M38.4,72a2.6,2.6 0,1 0,5.2 0a2.6,2.6 0,1 0,-5.2 0z
+                M54.8,77a3.2,3.2 0,1 0,6.4 0a3.2,3.2 0,1 0,-6.4 0z
+                M65,69.5a2,2 0,1 0,4 0a2,2 0,1 0,-4 0z
+                M46.4,79a1.6,1.6 0,1 0,3.2 0a1.6,1.6 0,1 0,-3.2 0z" />
+
+        <!-- Moteados claros en el Bt -->
+        <path
+            android:fillColor="#B3F4F1EA"
+            android:pathData="M44.1,55a0.9,0.9 0,1 0,1.8 0a0.9,0.9 0,1 0,-1.8 0z
+                M61.1,52a0.9,0.9 0,1 0,1.8 0a0.9,0.9 0,1 0,-1.8 0z
+                M53.1,59a0.9,0.9 0,1 0,1.8 0a0.9,0.9 0,1 0,-1.8 0z" />
+
+        <!-- Raíces -->
+        <path
+            android:pathData="M46,30 C46,37 43,40 44,46 M46,36 C49,39 49,42 52,45 M60,30 C60,37 63,41 61,50 M61,39 C58,42 57,45 58,48"
+            android:strokeWidth="1.1"
+            android:strokeColor="#BFF4F1EA"
+            android:strokeLineCap="round" />
+    </group>
+
+    <!-- Contorno del monolito (Caliza) -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:pathData="M40,27h28a7,7 0,0 1,7 7v42a7,7 0,0 1,-7 7h-28a7,7 0,0 1,-7 -7v-42a7,7 0,0 1,7 -7z"
+        android:strokeWidth="2.2"
+        android:strokeColor="#F4F1EA" />
+
+    <!-- Pasto (Olivino) -->
+    <path
+        android:fillColor="#6B8E23"
+        android:pathData="M37,27 l1.5,-5 l1.5,5z M43,27 l2,-6 l1,6z M50,27 l1,-4 l2,4z M57,27 l2,-6.5 l1,6.5z M64,27 l1,-4.5 l2,4.5z M70,27 l1.5,-5.5 l1.5,5.5z"
+        android:strokeWidth="1.6"
+        android:strokeColor="#6B8E23"
+        android:strokeLineJoin="round" />
+    </group>
 </vector>

@@ -101,7 +101,8 @@ class RecorridoRepository(
      */
     fun guardarParada(recorridoId: Long, parada: Parada) =
         modificarParada(recorridoId, parada.id) { actual ->
-            parada.copy(items = actual.items)
+            // La fecha de modificación la maneja el repositorio, no la pantalla.
+            parada.copy(items = actual.items, modificado = actual.modificado)
         }
 
     fun eliminarParada(recorridoId: Long, paradaId: Long) =
@@ -133,12 +134,26 @@ class RecorridoRepository(
 
     // ----- Internos -----
 
+    /**
+     * Aplica [cambio] a una salida. Si el contenido cambió de verdad, se actualiza su fecha
+     * de modificación (abrir una pantalla y guardar sin tocar nada no la cambia). Esa fecha
+     * se usa para saber si un PDF exportado quedó desactualizado.
+     */
     private fun modificarRecorrido(id: Long, cambio: (Recorrido) -> Recorrido) =
-        modificar { lista -> lista.map { if (it.id == id) cambio(it) else it } }
+        modificar { lista ->
+            lista.map { r ->
+                if (r.id != id) r
+                else cambio(r).let { nuevo -> if (nuevo != r) nuevo.copy(modificado = reloj()) else r }
+            }
+        }
 
+    /** Igual que [modificarRecorrido], para una parada (también marca la salida como modificada). */
     private fun modificarParada(recorridoId: Long, paradaId: Long, cambio: (Parada) -> Parada) =
         modificarRecorrido(recorridoId) { r ->
-            r.copy(paradas = r.paradas.map { if (it.id == paradaId) cambio(it) else it })
+            r.copy(paradas = r.paradas.map { p ->
+                if (p.id != paradaId) p
+                else cambio(p).let { nuevo -> if (nuevo != p) nuevo.copy(modificado = reloj()) else p }
+            })
         }
 
     private fun modificar(cambio: (List<Recorrido>) -> List<Recorrido>) {

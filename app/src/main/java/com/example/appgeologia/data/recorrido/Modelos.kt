@@ -23,7 +23,9 @@ data class Recorrido(
     val descripcion: String = "",
     val fechaInicio: Long,
     val finalizado: Boolean = false,
-    val paradas: List<Parada> = emptyList()
+    val paradas: List<Parada> = emptyList(),
+    /** Última vez que cambió algo de la salida o de sus paradas (0 = desconocido). */
+    val modificado: Long = 0
 )
 
 /**
@@ -44,7 +46,9 @@ data class Parada(
     val sitio: DatosSitio = DatosSitio(),
     // "horizontes" es el nombre que tenía en la primera versión de la app.
     @JsonNames("horizontes") val items: List<ItemParada> = emptyList(),
-    val observaciones: String = ""
+    val observaciones: String = "",
+    /** Última vez que cambió algo de la parada o de sus horizontes (0 = desconocido). */
+    val modificado: Long = 0
 )
 
 /** Encabezado de la planilla: datos generales del sitio de la calicata. */
@@ -98,6 +102,10 @@ data class ItemParada(
     val colorSeco: String = "",
     val colorHumedo: String = "",
     val textura: String = "",
+    // Porcentajes cargados en el triángulo textural (solo se guardan en la app, no van al PDF).
+    val texturaArena: Int? = null,
+    val texturaLimo: Int? = null,
+    val texturaArcilla: Int? = null,
     // Consistencia
     val resistencia: String = "",
     val adhesividad: String = "",

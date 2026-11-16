@@ -13,3 +13,9 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Resultados de la prueba integral de PDF (quedan solo en la PC)
+/TestPDF/
+
+# APK generados para instalar en el celular (control de versiones local)
+/APK/

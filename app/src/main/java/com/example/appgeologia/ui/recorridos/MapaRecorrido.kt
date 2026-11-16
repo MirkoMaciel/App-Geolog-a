@@ -7,6 +7,28 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.drawable.BitmapDrawable
 import android.view.MotionEvent
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.osmdroid.tileprovider.MapTileProviderBasic
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -118,6 +140,31 @@ fun MapaRecorrido(
         }
     }
 
+    // ----- Mapa en línea o mapa descargado -----
+    // Sin internet (o si el usuario lo elige) se usa el mapa descargado de la zona,
+    // que se dibuja en el teléfono sin necesitar conexión.
+    val hayInternet by rememberHayInternet()
+    val hayMapaDescargado = remember { MapaSinConexion.disponible(context) }
+    var forzarDescargado by rememberSaveable { mutableStateOf(false) }
+    val usarDescargado = hayMapaDescargado && (forzarDescargado || !hayInternet)
+
+    LaunchedEffect(usarDescargado) {
+        if (usarDescargado == estado.usandoDescargado) return@LaunchedEffect
+        val proveedor = if (usarDescargado) {
+            // La primera vez se copia el archivo del mapa: se hace fuera de la pantalla.
+            withContext(Dispatchers.IO) { MapaSinConexion.archivo(context) }
+            MapaSinConexion.crearProveedor(context)
+        } else {
+            MapTileProviderBasic(context, MOSAICOS_OSM)
+        }
+        if (proveedor != null) {
+            mapa.setTileProvider(proveedor)
+            estado.usandoDescargado = usarDescargado
+            mapa.invalidate()
+        }
+    }
+
+    Column {
     AndroidView(
         factory = { mapa },
         // Sin esto el mapa se dibuja por fuera de su espacio y tapa el resto de la pantalla.
@@ -169,11 +216,67 @@ fun MapaRecorrido(
             vista.invalidate()
         }
     )
+    AvisoMapa(
+        hayInternet = hayInternet,
+        hayMapaDescargado = hayMapaDescargado,
+        forzarDescargado = forzarDescargado,
+        onForzarDescargado = { forzarDescargado = it }
+    )
+    }
+}
+
+/** Aviso debajo del mapa sobre qué mapa se está viendo y qué pasa sin conexión. */
+@Composable
+private fun AvisoMapa(
+    hayInternet: Boolean,
+    hayMapaDescargado: Boolean,
+    forzarDescargado: Boolean,
+    onForzarDescargado: (Boolean) -> Unit
+) {
+    val zona = MapaSinConexion.NOMBRE_ZONA
+    val aviso = when {
+        !hayInternet && hayMapaDescargado ->
+            "Sin conexión: se usa el mapa descargado de la $zona. Fuera de esa zona el mapa " +
+                "se ve vacío. Las paradas y el GPS funcionan igual."
+        !hayInternet ->
+            "Sin conexión: el mapa muestra solo las zonas que ya se vieron con internet. " +
+                "Las paradas y el GPS funcionan igual."
+        forzarDescargado ->
+            "Usando el mapa descargado de la $zona (funciona sin internet)."
+        else -> null
+    }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        if (aviso != null) {
+            Surface(
+                color = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.Info, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Text(aviso, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        }
+        if (hayInternet && hayMapaDescargado) {
+            FilterChip(
+                selected = forzarDescargado,
+                onClick = { onForzarDescargado(!forzarDescargado) },
+                label = { Text("Usar mapa descargado") },
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+        }
+    }
 }
 
 private class EstadoMapa {
     var miUbicacion: MyLocationNewOverlay? = null
     var cantidadCentrada = -1
+    var usandoDescargado = false
 }
 
 private fun configurarOsmdroid(context: Context) {

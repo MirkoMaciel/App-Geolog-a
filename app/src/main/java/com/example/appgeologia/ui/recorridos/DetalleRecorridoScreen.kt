@@ -60,8 +60,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.appgeologia.data.recorrido.Parada
 import com.example.appgeologia.data.recorrido.Recorrido
-import com.example.appgeologia.pdf.DialogoExportarPdf
-import com.example.appgeologia.pdf.PlanillaPdf
+import com.example.appgeologia.pdf.DialogoExportarSalida
 import com.example.appgeologia.ubicacion.ResultadoUbicacion
 import com.example.appgeologia.ubicacion.rememberSolicitudUbicacion
 import com.example.appgeologia.ui.componentes.formatearCoordenada
@@ -296,9 +295,8 @@ fun DetalleRecorridoScreen(
     }
 
     if (exportar) {
-        DialogoExportarPdf(
-            titulo = "Exportar salida",
-            generar = { context -> PlanillaPdf(context).generarRecorrido(recorrido) },
+        DialogoExportarSalida(
+            obtener = { viewModel.recorridos.value.find { it.id == recorrido.id } },
             onCerrar = { exportar = false }
         )
     }

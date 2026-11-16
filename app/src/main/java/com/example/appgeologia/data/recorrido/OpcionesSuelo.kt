@@ -64,9 +64,8 @@ object OpcionesSuelo {
         Opcion("VEf", "Violentamente efervescente")
     )
 
-    // TODO: confirmar el significado de "D" con la cátedra.
     val concentracionTipo = GrupoOpciones(
-        Opcion("D", "D (a confirmar)"),
+        Opcion("D", "Difuso"),
         Opcion("M", "Masas"),
         Opcion("N", "Nódulos"),
         Opcion("C", "Concreciones"),
@@ -88,9 +87,18 @@ object OpcionesSuelo {
 
     // --- Sugerencias para campos de texto libre (se pueden escribir otros valores) ---
 
-    // TODO: confirmar con la cátedra; la planilla en papel usa íconos para la forma.
-    val sugerenciasFormaConcentracion = listOf(
-        "Cilíndrica", "Dendrítica", "Irregular", "Laminar", "Esférica", "Filamentosa"
+    /**
+     * Formas de las concentraciones (y rasgos redoximórficos). En la app se elige por la
+     * figura; en el PDF se imprime solo el nombre ([Opcion.codigo]).
+     */
+    val formasConcentracion = listOf(
+        Opcion("Cilíndrica", "Cuerpos tubulares y elongados. Ej.: túneles de lombrices rellenados."),
+        Opcion("Dendrítica", "Cuerpos tubulares, elongados y ramificados. Ej.: seudomorfos de raíces."),
+        Opcion("Irregular", "Cuerpos de espaciado o formas no repetitivos."),
+        Opcion("Laminar", "Capas tabulares o lentes relativamente finas. Ej.: lamelas."),
+        Opcion("Esférica", "Cuerpos bien redondeados a toscamente esféricos. Ej.: municiones de Fe/Mn."),
+        Opcion("Hilos", "Filamentos finos y elongados (< 1 mm), no dendríticos. Ej.: hilos de CaCO₃."),
+        Opcion("Reticulada", "Cuerpos entrelazados con espaciado similar. Ej.: plintita.")
     )
 
     val sugerenciasTextura = listOf(
@@ -109,6 +117,9 @@ object OpcionesSuelo {
     )
 
     val sugerenciasTamano = listOf("Muy fino", "Fino", "Medio", "Grueso", "Muy grueso")
+
+    /** Tamaños de raíces (en femenino, como se anotan en la planilla). */
+    val sugerenciasTamanoRaices = listOf("Muy finas", "Finas", "Medias", "Gruesas", "Muy gruesas")
 
     val sugerenciasCantidad = listOf("Pocas", "Comunes", "Abundantes")
 

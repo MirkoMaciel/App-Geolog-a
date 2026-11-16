@@ -44,7 +44,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.example.appgeologia.R
 import com.example.appgeologia.data.recorrido.GrupoOpciones
 import com.example.appgeologia.data.recorrido.OpcionesSuelo
 import com.example.appgeologia.data.recorrido.Recorrido
@@ -94,7 +96,7 @@ fun InicioScreen(
                     color = MaterialTheme.colorScheme.onPrimary
                 )
                 Text(
-                    "App Geología",
+                    stringResource(R.string.nombre_completo),
                     style = MaterialTheme.typography.headlineLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onPrimary
@@ -282,8 +284,9 @@ private fun DialogoComoSeUsa(onCerrar: () -> Unit) {
             ) {
                 pasos.forEachIndexed { i, paso -> Text("${i + 1}. $paso") }
                 Text(
-                    "Todo se guarda solo en el teléfono y funciona sin conexión (el mapa necesita " +
-                        "internet la primera vez que se ve cada zona).",
+                    "Todo se guarda solo en el teléfono y funciona sin conexión. Sin internet, " +
+                        "el mapa usa el mapa descargado de la zona de Escalante (Chubut); fuera " +
+                        "de esa zona solo se ven las partes que ya se miraron con internet.",
                     style = MaterialTheme.typography.bodySmall
                 )
             }

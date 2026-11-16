@@ -145,4 +145,32 @@ class RecorridoRepositoryTest {
         r.eliminarItem(id, p1, i1)
         assertEquals(setOf("c.jpg"), r.fotosEnUso())
     }
+
+    @Test
+    fun laFechaDeModificacionSoloCambiaSiCambiaElContenido() {
+        var ahora = 1000L
+        val r = RecorridoRepository(File(carpeta.root, "m.json"), CoroutineScope(Dispatchers.Unconfined), reloj = { ahora })
+        val id = r.crearRecorrido("Salida", TipoSalida.SUELOS, "", "")
+        val p = r.crearParada(id)
+        val inicial = r.buscarParada(id, p)!!
+
+        // Guardar sin cambios (como pasa al abrir y cerrar una pantalla) no la cambia.
+        ahora = 5000L
+        r.guardarParada(id, inicial)
+        assertEquals(inicial.modificado, r.buscarParada(id, p)!!.modificado)
+
+        // Un cambio real actualiza la fecha de la parada y de la salida.
+        ahora = 9000L
+        r.guardarParada(id, inicial.copy(observaciones = "nueva"))
+        assertEquals(9000L, r.buscarParada(id, p)!!.modificado)
+        assertEquals(9000L, r.buscarRecorrido(id)!!.modificado)
+
+        // Cambiar un horizonte también cuenta como cambio de la parada.
+        ahora = 12000L
+        val h = r.agregarItem(id, p)
+        assertEquals(12000L, r.buscarParada(id, p)!!.modificado)
+        ahora = 15000L
+        r.guardarItem(id, p, r.buscarParada(id, p)!!.items.first { it.id == h }.copy(textura = "Franco"))
+        assertEquals(15000L, r.buscarParada(id, p)!!.modificado)
+    }
 }

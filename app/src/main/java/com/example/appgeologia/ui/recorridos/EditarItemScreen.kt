@@ -1,6 +1,9 @@
 package com.example.appgeologia.ui.recorridos
 
+import com.example.appgeologia.ui.componentes.DialogoTrianguloTextural
+import com.example.appgeologia.data.recorrido.TrianguloTextural
 import com.example.appgeologia.ui.componentes.SeccionDesplegable
+import com.example.appgeologia.ui.componentes.SelectorFormaConcentracion
 import android.content.ActivityNotFoundException
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -63,6 +66,7 @@ import com.example.appgeologia.archivos.AlmacenFotos
 import com.example.appgeologia.data.recorrido.ItemParada
 import com.example.appgeologia.data.recorrido.OpcionesSuelo
 import com.example.appgeologia.data.recorrido.tieneDatosSuelo
+import com.example.appgeologia.ui.componentes.CampoColorMunsell
 import com.example.appgeologia.ui.componentes.CampoConSugerencias
 import com.example.appgeologia.ui.componentes.CampoTexto
 import com.example.appgeologia.ui.componentes.MiniaturaFoto
@@ -310,13 +314,14 @@ private fun CamposSuelo(item: ItemParada, onCambio: (ItemParada) -> Unit) {
     }
 
     TituloSeccion("Color (Munsell)")
-    CampoTexto("Seco (ej. 10YR 5/3)", h.colorSeco, { cambiar(h.copy(colorSeco = it)) })
-    CampoTexto("Húmedo (ej. 10YR 3/2)", h.colorHumedo, { cambiar(h.copy(colorHumedo = it)) })
+    CampoColorMunsell("Seco", h.colorSeco) { cambiar(h.copy(colorSeco = it)) }
+    CampoColorMunsell("Húmedo", h.colorHumedo) { cambiar(h.copy(colorHumedo = it)) }
 
     TituloSeccion("Textura")
     CampoConSugerencias("Textura al tacto", h.textura, OpcionesSuelo.sugerenciasTextura) {
         cambiar(h.copy(textura = it))
     }
+    TexturaConTriangulo(h, onCambio)
 
     TituloSeccion("Consistencia")
     CampoConSugerencias("Resistencia", h.resistencia, OpcionesSuelo.sugerenciasResistencia) {
@@ -356,9 +361,7 @@ private fun CamposSuelo(item: ItemParada, onCambio: (ItemParada) -> Unit) {
     CampoConSugerencias("Cantidad", h.concentracionCantidad, OpcionesSuelo.sugerenciasCantidad) {
         cambiar(h.copy(concentracionCantidad = it))
     }
-    CampoConSugerencias("Forma", h.concentracionForma, OpcionesSuelo.sugerenciasFormaConcentracion) {
-        cambiar(h.copy(concentracionForma = it))
-    }
+    SelectorFormaConcentracion(h.concentracionForma) { cambiar(h.copy(concentracionForma = it)) }
 
     TituloSeccion("Otros rasgos")
     CampoTexto("Rasgos redox", h.rasgosRedox, { cambiar(h.copy(rasgosRedox = it)) })
@@ -374,7 +377,7 @@ private fun CamposSuelo(item: ItemParada, onCambio: (ItemParada) -> Unit) {
     SelectorOpciones("Cantidad", OpcionesSuelo.raicesCantidad, h.raicesCantidad) {
         cambiar(h.copy(raicesCantidad = it))
     }
-    CampoConSugerencias("Tamaño", h.raicesTamano, OpcionesSuelo.sugerenciasTamano) {
+    CampoConSugerencias("Tamaño", h.raicesTamano, OpcionesSuelo.sugerenciasTamanoRaices) {
         cambiar(h.copy(raicesTamano = it))
     }
     CampoConSugerencias("Ubicación", h.raicesUbicacion, OpcionesSuelo.sugerenciasRaicesUbicacion) {
@@ -389,5 +392,44 @@ private fun CamposSuelo(item: ItemParada, onCambio: (ItemParada) -> Unit) {
     }
     CampoConSugerencias("Tamaño", h.fragmentosTamano, OpcionesSuelo.sugerenciasTamano) {
         cambiar(h.copy(fragmentosTamano = it))
+    }
+}
+
+/**
+ * Botón que abre el triángulo textural y, si ya se usó, los porcentajes guardados.
+ * Al aplicar se completa el campo Textura con el nombre de la clase (lo que va al PDF)
+ * y se guardan arena, limo y arcilla (solo en la app).
+ */
+@Composable
+private fun TexturaConTriangulo(item: ItemParada, onCambio: (ItemParada) -> Unit) {
+    var abierto by rememberSaveable { mutableStateOf(false) }
+
+    OutlinedButton(onClick = { abierto = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Text("Triángulo textural")
+    }
+    val arena = item.texturaArena
+    val limo = item.texturaLimo
+    val arcilla = item.texturaArcilla
+    if (arena != null && limo != null && arcilla != null) {
+        val clase = TrianguloTextural.clasificar(arena, limo, arcilla)
+        Text(
+            "Arena $arena % · Limo $limo % · Arcilla $arcilla %" + (clase?.let { " → ${it.nombre}" } ?: ""),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 4.dp)
+        )
+    }
+
+    if (abierto) {
+        DialogoTrianguloTextural(
+            arenaInicial = arena,
+            limoInicial = limo,
+            arcillaInicial = arcilla,
+            onAplicar = { a, l, c, nombre ->
+                onCambio(item.copy(textura = nombre, texturaArena = a, texturaLimo = l, texturaArcilla = c))
+                abierto = false
+            },
+            onCerrar = { abierto = false }
+        )
     }
 }

@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Patagonia Ground Note — Arquitectura</title>
+<style>
+  @page { size: A4; margin: 16mm 16mm 16mm 16mm; }
+  :root {
+    --pizarra: #2C3E50; --oxido: #C85A17; --olivino: #6B8E23; --caliza: #F4F1EA;
+    --tarjeta: #EDE9E0; --texto: #22262B; --gris: #5E6670; --borde: #D8D2C6;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", Arial, sans-serif; color: var(--texto); font-size: 10.3pt; line-height: 1.45; margin: 0; }
+  h1 { font-size: 22pt; color: var(--pizarra); margin: 0; }
+  h2 { font-size: 14pt; color: var(--pizarra); margin: 18px 0 6px; padding-bottom: 4px; border-bottom: 2px solid var(--oxido); }
+  h3 { font-size: 11pt; color: var(--oxido); margin: 12px 0 4px; }
+  p { margin: 5px 0; }
+  ul { margin: 4px 0; padding-left: 20px; }
+  li { margin: 2px 0; }
+  code { font-family: Consolas, monospace; font-size: 9pt; background: var(--caliza); border: 1px solid var(--borde); border-radius: 3px; padding: 0 3px; }
+  .portada { background: var(--pizarra); color: #fff; border-radius: 8px; padding: 18px 22px; margin-bottom: 14px; }
+  .portada h1 { color: #fff; }
+  .portada p { color: #D9E2EC; margin: 4px 0 0; }
+  .portada .chips span { display: inline-block; background: rgba(255,255,255,.12); border-radius: 12px; padding: 1px 9px; margin: 8px 6px 0 0; font-size: 9pt; }
+  .arbol { font-family: Consolas, monospace; font-size: 8.6pt; line-height: 1.38; background: var(--caliza); border: 1px solid var(--borde); border-left: 4px solid var(--pizarra); border-radius: 4px; padding: 8px 12px; white-space: pre; break-inside: avoid; }
+  .arbol .c { color: var(--gris); }
+  .arbol .d { color: var(--oxido); font-weight: bold; }
+  .capas { display: flex; flex-direction: column; gap: 5px; margin: 8px 0; break-inside: avoid; }
+  .capa { display: flex; border: 1px solid var(--borde); border-radius: 6px; overflow: hidden; }
+  .capa b { width: 150px; flex: none; padding: 6px 10px; color: #fff; }
+  .capa span { padding: 6px 10px; background: #fff; flex: 1; font-size: 9.6pt; }
+  .flecha { text-align: center; color: var(--gris); font-size: 9pt; margin: -2px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 9.6pt; break-inside: avoid; }
+  th { background: var(--pizarra); color: #fff; text-align: left; padding: 5px 8px; }
+  td { border-bottom: 1px solid var(--borde); padding: 5px 8px; vertical-align: top; }
+  tr:nth-child(even) td { background: #FAF8F4; }
+  .nota { background: var(--tarjeta); border-left: 4px solid var(--olivino); padding: 6px 10px; border-radius: 4px; margin: 8px 0; font-size: 9.6pt; }
+  .salto { break-before: page; }
+  .pie { margin-top: 16px; color: var(--gris); font-size: 8.5pt; text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="portada">
+  <h1>Patagonia Ground Note (PGN)</h1>
+  <p>Resumen de la arquitectura y de cómo está armada la aplicación · Versión 1.2</p>
+  <p>App Android para describir suelos en salidas de campo (UNPSJB, Comodoro Rivadavia)</p>
+  <div class="chips"><span>Kotlin</span><span>Jetpack Compose</span><span>Material 3</span><span>MVVM</span><span>Offline-first</span><span>osmdroid / Mapsforge</span></div>
+</div>
+
+<h2>1. Idea general</h2>
+<p>La app es <b>nativa de Android</b>, escrita en <b>Kotlin</b> y con la interfaz hecha en <b>Jetpack Compose</b> (interfaz declarativa). Está organizada en <b>capas</b>: la pantalla solo muestra datos y avisa lo que hace el usuario; la lógica y el guardado están separados. Todo funciona <b>sin internet</b> y los datos quedan en el teléfono.</p>
+
+<div class="capas">
+  <div class="capa"><b style="background:#2C3E50">Interfaz (UI)</b><span>Pantallas y componentes de Compose: inicio, salidas, paradas, horizontes, exportaciones, mapa.</span></div>
+  <div class="flecha">▲ estado (StateFlow) &nbsp;&nbsp;|&nbsp;&nbsp; ▼ acciones del usuario</div>
+  <div class="capa"><b style="background:#6B8E23">ViewModel</b><span><code>RecorridosViewModel</code>: recibe las acciones, llama al repositorio y expone los datos a las pantallas. Sobrevive a la rotación de pantalla.</span></div>
+  <div class="flecha">▼</div>
+  <div class="capa"><b style="background:#C85A17">Datos (Repositorio)</b><span><code>RecorridoRepository</code>: única fuente de verdad. Guarda las salidas en un archivo JSON.</span></div>
+  <div class="flecha">▼</div>
+  <div class="capa"><b style="background:#5E6670">Servicios / archivos</b><span>Fotos, PDF, exportaciones, GPS y mapa: clases separadas que la UI y el ViewModel usan cuando las necesitan.</span></div>
+</div>
+
+<h2>2. Estructura de archivos</h2>
+<p>Código en <code>app/src/main/java/com/example/appgeologia/</code>:</p>
+<div class="arbol"><span class="d">appgeologia/</span>
+├── MainActivity.kt                 <span class="c">única Activity: arranca el tema y la navegación</span>
+├── <span class="d">data/recorrido/</span>                 <span class="c">CAPA DE DATOS</span>
+│   ├── Modelos.kt                  <span class="c">Recorrido (salida) → Parada → ItemParada (horizonte)</span>
+│   ├── RecorridoRepository.kt      <span class="c">guarda/lee el JSON, altas, bajas, cambios</span>
+│   ├── OpcionesSuelo.kt            <span class="c">opciones fijas de la planilla (límite, HCl, formas…)</span>
+│   ├── ColoresMunsell.kt           <span class="c">tabla de colores 10YR y 7.5YR</span>
+│   └── TrianguloTextural.kt        <span class="c">clasificación USDA arena/limo/arcilla</span>
+├── <span class="d">archivos/</span>
+│   ├── AlmacenFotos.kt             <span class="c">fotos de cámara/galería, reducidas y rotadas</span>
+│   └── AlmacenExportaciones.kt     <span class="c">PDF vigentes, copias, índice, compartir</span>
+├── <span class="d">pdf/</span>
+│   ├── PlanillaPdf.kt              <span class="c">dibuja la planilla de suelos en PDF</span>
+│   └── DialogoExportarPdf.kt       <span class="c">flujo de exportar: reemplazar / usar anterior / copia</span>
+├── <span class="d">ubicacion/</span>
+│   └── Ubicacion.kt                <span class="c">permiso y posición GPS</span>
+└── <span class="d">ui/</span>                             <span class="c">CAPA DE INTERFAZ</span>
+    ├── Navegacion.kt               <span class="c">rutas de pantallas y barra inferior</span>
+    ├── <span class="d">inicio/</span>InicioScreen.kt
+    ├── <span class="d">recorridos/</span>                 <span class="c">salidas, paradas, horizontes, mapa</span>
+    │   ├── RecorridosViewModel.kt
+    │   ├── ListaRecorridosScreen.kt · DetalleRecorridoScreen.kt
+    │   ├── EditarParadaScreen.kt · EditarItemScreen.kt
+    │   └── MapaRecorrido.kt · MapaSinConexion.kt
+    ├── <span class="d">exportaciones/</span>ExportacionesScreen.kt
+    ├── <span class="d">componentes/</span>                <span class="c">piezas reutilizables</span>
+    │   ├── CamposFormulario.kt · SeccionDesplegable.kt · Fotos.kt
+    │   ├── CampoColorMunsell.kt · DialogoTrianguloTextural.kt
+    │   └── SelectorFormaConcentracion.kt
+    └── <span class="d">theme/</span>Color.kt · Theme.kt · Type.kt   <span class="c">paleta "Cartografía y Estratos"</span></div>
+
+<p>Otros lugares importantes:</p>
+<table>
+  <tr><th>Carpeta / archivo</th><th>Qué contiene</th></tr>
+  <tr><td><code>app/src/main/res/</code></td><td>Íconos de la app (mipmap, ícono adaptable), textos (<code>strings.xml</code>: "PGN" y "Patagonia Ground Note") y rutas del FileProvider.</td></tr>
+  <tr><td><code>app/src/main/assets/mapas/</code></td><td><code>escalante.map</code>: mapa sin conexión de la zona de Escalante (Chubut).</td></tr>
+  <tr><td><code>AndroidManifest.xml</code></td><td>Permisos (internet, estado de red, ubicación), la Activity y el FileProvider para compartir archivos.</td></tr>
+  <tr><td><code>app/build.gradle.kts</code> · <code>gradle/libs.versions.toml</code></td><td>Configuración de compilación, versión (1.2) y librerías centralizadas.</td></tr>
+  <tr><td><code>app/src/test/</code></td><td>Pruebas unitarias (Munsell, triángulo, repositorio, exportaciones).</td></tr>
+  <tr><td><code>app/src/androidTest/</code></td><td>Pruebas en el emulador: PDF, salida completa y mapa sin conexión.</td></tr>
+</table>
+
+<h2 class="salto">3. Técnicas y conceptos de desarrollo mobile aplicados</h2>
+
+<h3>Arquitectura MVVM (Model – View – ViewModel)</h3>
+<p>Patrón recomendado por Google. El <b>Modelo</b> son los datos (<code>Modelos.kt</code> + repositorio), la <b>Vista</b> son las pantallas de Compose y el <b>ViewModel</b> hace de intermediario. La pantalla no guarda datos ni conoce archivos: solo dibuja lo que recibe.</p>
+
+<h3>Flujo de datos unidireccional (UDF)</h3>
+<p>Los datos <b>bajan</b> (repositorio → ViewModel → pantalla) y los eventos <b>suben</b> (el usuario toca → la pantalla avisa → el ViewModel actúa). Así, cada dato tiene un solo dueño y no hay copias desincronizadas.</p>
+
+<h3>Interfaz declarativa con Jetpack Compose</h3>
+<p>En vez de layouts XML, la interfaz se describe con funciones <code>@Composable</code>. Cuando cambia el estado, Compose <b>recompone</b> solo lo necesario. Se usa <code>remember</code> / <code>rememberSaveable</code> para el estado local (por ejemplo, un desplegable abierto) y <b>componentes reutilizables</b> (campos, secciones desplegables, selector Munsell, triángulo textural).</p>
+
+<h3>Programación reactiva con StateFlow y corrutinas</h3>
+<p>El repositorio expone las salidas en un <code>StateFlow</code>: cualquier cambio se refleja automáticamente en todas las pantallas. Las tareas pesadas (guardar, generar PDF, copiar el mapa) corren con <b>corrutinas</b> en <code>Dispatchers.IO</code>, fuera del hilo principal, para que la app no se congele.</p>
+
+<h3>Single Activity + Navigation Compose</h3>
+<p>Hay una sola Activity; las pantallas son destinos de navegación. Las rutas son <b>clases tipadas</b> (<code>RutaParada(recorridoId, paradaId)</code>), así los parámetros se controlan al compilar. Barra inferior con tres pestañas: Inicio, Salidas y Exportaciones.</p>
+
+<h3>Offline-first (primero sin conexión)</h3>
+<ul>
+  <li>Los datos se guardan en el teléfono como <b>JSON</b> (kotlinx.serialization), con <b>escritura atómica</b> (archivo temporal + renombrar) para no corromperlos si la app se cierra a mitad.</li>
+  <li><b>Migración de datos</b>: <code>@JsonNames</code> y valores por defecto permiten abrir datos de versiones anteriores.</li>
+  <li><b>Mapa sin conexión</b>: archivo vectorial Mapsforge incluido en la app; se detecta la conectividad con <code>ConnectivityManager</code> y se cambia de mapa automáticamente.</li>
+  <li>GPS, fotos y PDF funcionan sin internet.</li>
+</ul>
+
+<h3>Recursos del dispositivo y permisos</h3>
+<ul>
+  <li><b>Permisos en tiempo de ejecución</b> para la ubicación (se piden solo cuando se necesitan).</li>
+  <li><b>Cámara y galería</b> con los contratos de Activity Result; las fotos se reducen y se corrige su orientación (EXIF) para ahorrar memoria.</li>
+  <li><b>FileProvider</b> para compartir los PDF de forma segura con otras apps (mail, WhatsApp, Drive).</li>
+  <li><b>Ciclo de vida</b>: el mapa se pausa y libera recursos con la pantalla (<code>LifecycleEventObserver</code>).</li>
+</ul>
+
+<h3>Interoperabilidad Compose ↔ Views</h3>
+<p>El mapa (osmdroid) es una View clásica de Android; se integra en Compose con <code>AndroidView</code>. El PDF se dibuja con <code>Canvas</code> de Android, y reutiliza los mismos dibujos de la app (formas de concentración).</p>
+
+<h3>Material Design 3 y tema propio</h3>
+<p>Paleta propia "Cartografía y Estratos" (pizarra, óxido de hierro, olivino, caliza), con modo claro y oscuro, e ícono adaptable de Android.</p>
+
+<h3>Pruebas automáticas</h3>
+<p><b>Unitarias</b> (JUnit) para la lógica pura: colores Munsell, triángulo textural, repositorio y exportaciones. <b>Instrumentadas</b> (en el emulador) para lo que depende de Android: generación de PDF, una salida de campo completa de punta a punta y el mapa sin conexión.</p>
+
+<h2>4. Librerías principales</h2>
+<table>
+  <tr><th>Librería</th><th>Para qué se usa</th></tr>
+  <tr><td>Jetpack Compose + Material 3</td><td>Interfaz de usuario</td></tr>
+  <tr><td>Navigation Compose</td><td>Navegación entre pantallas</td></tr>
+  <tr><td>Lifecycle / ViewModel</td><td>ViewModel y manejo del ciclo de vida</td></tr>
+  <tr><td>kotlinx.serialization</td><td>Guardar y leer los datos en JSON</td></tr>
+  <tr><td>osmdroid + osmdroid-mapsforge</td><td>Mapa de OpenStreetMap y mapa sin conexión</td></tr>
+  <tr><td>Android PdfDocument (del sistema)</td><td>Generar los PDF de la planilla</td></tr>
+  <tr><td>JUnit / AndroidX Test</td><td>Pruebas automáticas</td></tr>
+</table>
+
+<div class="nota"><b>En resumen:</b> app nativa Kotlin con Compose, arquitectura MVVM en capas, flujo de datos unidireccional, estado reactivo con StateFlow y corrutinas, navegación de una sola Activity, y diseño offline-first con almacenamiento local, mapa descargado y pruebas automáticas.</div>
+
+<div class="pie">Patagonia Ground Note · Resumen de arquitectura · versión 1.2 · noviembre de 2026</div>
+</body>
+</html>

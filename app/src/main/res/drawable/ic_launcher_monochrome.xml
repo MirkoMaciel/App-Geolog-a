@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Versión monocromática del ícono "Perfil de horizontes" para los íconos
+  temáticos de Android 13+. El sistema solo usa la forma (alfa) y la tiñe.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Escala y centra el dibujo dentro de la zona segura de 66 dp -->
+    <group
+        android:pivotX="54"
+        android:pivotY="54"
+        android:scaleX="0.86"
+        android:scaleY="0.86"
+        android:translateY="1.7">
+
+    <!-- Contorno del monolito -->
+    <path
+        android:pathData="M40,27h28a7,7 0,0 1,7 7v42a7,7 0,0 1,-7 7h-28a7,7 0,0 1,-7 -7v-42a7,7 0,0 1,7 -7z"
+        android:strokeWidth="2.6"
+        android:strokeColor="#FFFFFFFF" />
+
+    <!-- Horizonte Bt relleno, como banda sólida -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M33,47 Q40,45 47,47 T61,47 T75,47 L75,64.5 Q68,65.5 62,63.5 T48,64.5 T33,64 Z" />
+
+    <!-- Límite A / O -->
+    <path
+        android:pathData="M33,34h42"
+        android:strokeWidth="1.6"
+        android:strokeColor="#FFFFFFFF" />
+
+    <!-- Gravas del horizonte C -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M38.4,72a2.6,2.6 0,1 0,5.2 0a2.6,2.6 0,1 0,-5.2 0z
+            M54.8,77a3.2,3.2 0,1 0,6.4 0a3.2,3.2 0,1 0,-6.4 0z
+            M65,69.5a2,2 0,1 0,4 0a2,2 0,1 0,-4 0z" />
+
+    <!-- Raíces -->
+    <path
+        android:pathData="M46,30 C46,37 43,40 44,46 M60,30 C60,37 63,41 61,46"
+        android:strokeWidth="1.4"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round" />
+
+    <!-- Pasto -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M37,27 l1.5,-5 l1.5,5z M43,27 l2,-6 l1,6z M50,27 l1,-4 l2,4z M57,27 l2,-6.5 l1,6.5z M64,27 l1,-4.5 l2,4.5z M70,27 l1.5,-5.5 l1.5,5.5z"
+        android:strokeWidth="1.6"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineJoin="round" />
+    </group>
+</vector>

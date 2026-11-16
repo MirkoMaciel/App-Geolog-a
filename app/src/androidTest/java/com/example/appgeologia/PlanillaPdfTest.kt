@@ -98,13 +98,13 @@ class PlanillaPdfTest {
     /** 5 items con datos de suelo = 2 páginas de tabla; después 2 de fichas con fotos. */
     @Test
     fun planillaDeParadaConTablaYFichas() {
-        val pdf = PlanillaPdf(context).generarParada(recorrido, parada)
+        val pdf = PlanillaPdf(context).generarParada(recorrido, parada, File(context.cacheDir, "prueba_parada.pdf"))
         assertEquals(4, renderizar(pdf, "parada"))
     }
 
     @Test
     fun pdfDeRecorridoIncluyeCaratula() {
-        val pdf = PlanillaPdf(context).generarRecorrido(recorrido)
+        val pdf = PlanillaPdf(context).generarRecorrido(recorrido, File(context.cacheDir, "prueba_salida.pdf"))
         assertEquals(5, renderizar(pdf, "recorrido"))
     }
 

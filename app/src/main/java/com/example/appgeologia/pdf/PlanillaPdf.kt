@@ -1,6 +1,7 @@
 package com.example.appgeologia.pdf
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -12,15 +13,15 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import com.example.appgeologia.data.recorrido.DatosSitio
 import com.example.appgeologia.data.recorrido.GrupoOpciones
-import com.example.appgeologia.archivos.AlmacenExportaciones
+import com.example.appgeologia.R
 import com.example.appgeologia.archivos.AlmacenFotos
-import com.example.appgeologia.archivos.DatosExportacion
 import com.example.appgeologia.data.recorrido.ItemParada
 import com.example.appgeologia.data.recorrido.tieneDatosSuelo
 import com.example.appgeologia.data.recorrido.Opcion
 import com.example.appgeologia.data.recorrido.OpcionesSuelo
 import com.example.appgeologia.data.recorrido.Parada
 import com.example.appgeologia.data.recorrido.Recorrido
+import com.example.appgeologia.ui.componentes.dibujarFormaEnCanvas
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -33,7 +34,7 @@ import java.util.Locale
  * imprimen todas las opciones y se marca con un círculo la elegida, como se haría a mano.
  *
  * Después de la planilla va una ficha por cada item con su título, descripción y fotos.
- * Los PDF quedan guardados en "Mis exportaciones".
+ * Dónde se guarda cada PDF (y si reemplaza a uno anterior) lo decide AlmacenExportaciones.
  */
 class PlanillaPdf(private val context: Context) {
 
@@ -48,7 +49,7 @@ class PlanillaPdf(private val context: Context) {
     private val anchoEtiqueta = 72f
     private val horizontesPorPagina = 4
     private val anchoHorizonte = (anchoUtil - anchoGrupo - anchoEtiqueta) / horizontesPorPagina
-    private val anchoForma = 34f
+    private val anchoForma = 38f
     private val altoFila = 16f
     private val altoFilaDoble = 22f
 
@@ -57,8 +58,6 @@ class PlanillaPdf(private val context: Context) {
     private val separacionFotos = 10f
 
     private val fotos = AlmacenFotos(context)
-    private val exportaciones = AlmacenExportaciones(context)
-
     private val colorMarca = Color.rgb(192, 57, 43)
 
     private val lapizLinea = Paint().apply {
@@ -163,25 +162,19 @@ class PlanillaPdf(private val context: Context) {
 
     // ------------------------------------------------------------------ API pública
 
-    /** Genera el PDF de una sola parada. */
-    fun generarParada(recorrido: Recorrido, parada: Parada): File {
+    /** Dibuja el PDF de una sola parada en [destino]. */
+    fun generarParada(recorrido: Recorrido, parada: Parada, destino: File): File {
         val documento = Documento()
         dibujarParada(documento, recorrido, parada)
-        return documento.guardar(exportaciones.nuevoArchivo(
-            "Parada_${parada.numero}_${recorrido.nombre}",
-            DatosExportacion(recorrido.id, recorrido.nombre, "Parada ${parada.numero}")
-        ))
+        return documento.guardar(destino)
     }
 
-    /** Genera un PDF con una carátula del recorrido y la planilla de cada parada. */
-    fun generarRecorrido(recorrido: Recorrido): File {
+    /** Dibuja en [destino] un PDF con la carátula de la salida y la planilla de cada parada. */
+    fun generarRecorrido(recorrido: Recorrido, destino: File): File {
         val documento = Documento()
         dibujarCaratula(documento.nuevaPagina(), recorrido)
         recorrido.paradas.sortedBy { it.numero }.forEach { dibujarParada(documento, recorrido, it) }
-        return documento.guardar(exportaciones.nuevoArchivo(
-            "Salida_${recorrido.nombre}",
-            DatosExportacion(recorrido.id, recorrido.nombre, "Salida completa")
-        ))
+        return documento.guardar(destino)
     }
 
     // ------------------------------------------------------------------ Parada
@@ -297,8 +290,14 @@ class PlanillaPdf(private val context: Context) {
             rect.centerX() - ancho / 2, rect.centerY() - alto / 2,
             rect.centerX() + ancho / 2, rect.centerY() + alto / 2
         )
-        canvas.drawBitmap(bitmap, null, destino, Paint(Paint.FILTER_BITMAP_FLAG))
+        // El PDF guarda las imágenes casi sin comprimir: se achica la foto a la resolución
+        // con la que se imprime (~150 dpi) para que el archivo no pese varios MB por foto.
+        val anchoPx = (ancho * PIXELES_POR_PUNTO).toInt().coerceIn(1, bitmap.width)
+        val altoPx = (alto * PIXELES_POR_PUNTO).toInt().coerceIn(1, bitmap.height)
+        val reducida = Bitmap.createScaledBitmap(bitmap, anchoPx, altoPx, true)
+        canvas.drawBitmap(reducida, null, destino, Paint(Paint.FILTER_BITMAP_FLAG))
         canvas.drawRect(destino, lapizLinea)
+        if (reducida !== bitmap) reducida.recycle()
         bitmap.recycle()
     }
 
@@ -325,7 +324,7 @@ class PlanillaPdf(private val context: Context) {
     private fun dibujarEncabezado(canvas: Canvas, arriba: Float, parada: Parada): Float {
         val s: DatosSitio = parada.sitio
         val x0 = margen
-        val x1 = margen + 255f
+        val x1 = margen + 200f   // deja más lugar para "Sitio de Ref."
         val x2 = margen + 393f
         val fin = margen + anchoUtil
         val alto = 15f
@@ -466,11 +465,25 @@ class PlanillaPdf(private val context: Context) {
                         canvas.drawRect(rect, lapizLinea)
                         texto.textSize = 7f
                         canvas.drawText("Forma", rect.left + 3f, t + 9f, texto)
+                        // El nombre de la forma va en una sola línea (achicando la letra si hace
+                        // falta), para que no se corte en "Cilíndric-a".
                         val forma = horizontes.getOrNull(col)?.concentracionForma.orEmpty()
-                        textoAjustado(
-                            canvas, RectF(rect.left, t + 11f, rect.right, b), forma,
-                            tamMax = 7f, centrado = true
-                        )
+                        if (forma.isNotEmpty()) {
+                            val pincel = TextPaint(texto).apply { textSize = 7f; textAlign = Paint.Align.CENTER }
+                            while (pincel.measureText(forma) > anchoForma - 3f && pincel.textSize > 4.5f) pincel.textSize -= 0.25f
+                            val esConocida = OpcionesSuelo.formasConcentracion.any { it.codigo == forma }
+                            if (esConocida) {
+                                // Nombre arriba y, debajo, la misma figura que se ve en la app.
+                                val baseNombre = t + 11f + pincel.textSize + 1f
+                                canvas.drawText(forma, rect.centerX(), baseNombre, pincel)
+                                dibujarFormaEnCanvas(
+                                    canvas, forma,
+                                    RectF(rect.left + 2f, baseNombre + 2.5f, rect.right - 2f, b - 2f)
+                                )
+                            } else {
+                                canvas.drawText(forma, rect.centerX(), (t + 11f + b) / 2f + pincel.textSize / 3f, pincel)
+                            }
+                        }
                     }
                 }
             }
@@ -601,7 +614,7 @@ class PlanillaPdf(private val context: Context) {
     }
 
     private fun dibujarPie(canvas: Canvas, numero: Int) {
-        val texto = "App Geología · generado el ${fechaCorta(System.currentTimeMillis())} · Página $numero"
+        val texto = "${context.getString(R.string.nombre_completo)} · generado el ${fechaCorta(System.currentTimeMillis())} · Página $numero"
         canvas.drawText(
             texto,
             (anchoPagina - textoGris.measureText(texto)) / 2,
@@ -694,5 +707,8 @@ class PlanillaPdf(private val context: Context) {
 
     private companion object {
         const val GRUPO_CONCENTRACIONES = "Concentraciones"
+
+        /** Resolución de las fotos en el PDF: 150 dpi (1 punto = 1/72 de pulgada). */
+        const val PIXELES_POR_PUNTO = 150f / 72f
     }
 }

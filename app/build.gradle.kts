@@ -14,8 +14,8 @@ android {
         applicationId = "com.example.appgeologia"
         minSdk = 24
         targetSdk = 37
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -30,6 +30,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+    // El mapa sin conexión (.map) se lee directo del APK: no tiene que ir comprimido.
+    androidResources {
+        noCompress += "map"
     }
     buildFeatures {
         compose = true
@@ -50,6 +54,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.osmdroid.android)
+    implementation(libs.osmdroid.mapsforge)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
